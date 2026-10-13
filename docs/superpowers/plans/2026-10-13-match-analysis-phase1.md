@@ -8,7 +8,7 @@
 
 **Tech Stack:** Vite 6、TypeScript 5（strict）、`idb`（IndexedDB の薄いラッパー）、Vitest + `fake-indexeddb`、Playwright（WebKit）、YouTube IFrame Player API、Google Apps Script、GitHub Pages（GitHub Actions）。
 
-**Spec:** `docs/設計書.md`（要件定義書 `match-analysis-tool-requirements.md` の「5. 判定ルール」「6. データモデル」も正とする）
+**Spec:** `docs/設計書.md`（要件定義書 `docs/要件定義書.md` の「5. 判定ルール」「6. データモデル」も正とする）
 
 ## Global Constraints
 
