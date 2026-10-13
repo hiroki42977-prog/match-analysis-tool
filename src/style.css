@@ -118,3 +118,7 @@ input.num { width: 96px; flex: none; }
 .pitch.disabled { opacity: .5; }
 .figure h2 { margin-bottom: 0; }
 .summary { font-size: 20px; font-weight: 700; margin: 2px 0 8px; font-variant-numeric: tabular-nums; }
+.figures .figure { margin-top: 12px; }
+.figures .pitch svg { border-radius: 10px; }
+/* 図は横幅いっぱい。ただし見出しと一緒に1画面に収まる高さまで */
+.figures .pitch svg { width: auto; max-width: 100%; max-height: calc(100vh - 120px); margin: 0 auto; }

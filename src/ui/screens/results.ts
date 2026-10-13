@@ -101,11 +101,11 @@ export async function resultsScreen(root: HTMLElement, params: Record<string, st
     const mine = events.filter((e) => e.playerId === current);
     body.replaceChildren(
       h('div', { class: 'chips' }, ...players.map((p) => h('button', { class: p.id === current ? 'on' : '', onclick: () => { current = p.id; paint(); } }, `#${p.number} ${p.name}`))),
-      h('div', { class: 'cols' },
-        h('section', {}, h('h2', {}, '集計'), statsTable(mine)),
-        h('section', {},
+      // 集計表を上に、図はその下に1枚ずつ横幅いっぱいで並べる（矢印が重なっても見やすいよう大きく）
+      h('section', {}, h('h2', {}, '集計'), statsTable(mine)),
+      h('section', { class: 'figures' },
           // 図ごとに「見出し → 一言まとめ → 図（凡例は図の下に絵で）」
-          ...mapFigures(mine).map((fig) => h('div', { id: `map-${fig.key}`, class: 'figure' },
+        ...mapFigures(mine).map((fig) => h('div', { id: `map-${fig.key}`, class: 'figure' },
             h('h2', {}, fig.title),
             h('p', { class: 'summary' }, fig.summary),
             h('div', { class: 'pitch' }, svgEl(pitchSvg(fig.svg))))),
@@ -115,7 +115,6 @@ export async function resultsScreen(root: HTMLElement, params: Record<string, st
             heat: zoneCells(mine, heatType),
             legend: [[{ glyph: 'ok', label: '○ 成功' }, { glyph: 'ng', label: '× 失敗' }]],
           }))),
-        ),
       ),
       h('h2', {}, 'チーム全体'),
       teamTable(players, events),

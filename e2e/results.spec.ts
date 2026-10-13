@@ -43,6 +43,13 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
   await expect(page.locator('#map-shot .mark')).toHaveCount(1);
   await expect(page.locator('#map-dribble-1H .legend-item')).toHaveCount(5);
 
+  // 図は画面の横幅いっぱい（iPad 横向き 1180px で 1000px 以上）
+  for (const id of ['#map-overall-1H', '#map-dribble-1H', '#heatmap']) {
+    const box = (await page.locator(`${id} svg`).first().boundingBox())!;
+    expect(box.width, id).toBeGreaterThan(1000);
+    expect(box.height, id).toBeLessThan(720); // 見出しと一緒に1画面（820px）に収まる
+  }
+
   // 場所ごとの本数（パス・ドリブル）
   await expect(page.locator('#heatmap')).toContainText('3本');
 
