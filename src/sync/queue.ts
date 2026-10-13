@@ -81,3 +81,8 @@ export function startAutoFlush(getSettings: () => Promise<Settings | undefined>,
   }
   void run();
 }
+
+/** すぐ1回送る（自動送信が始まっていなければ何もしない） */
+export function requestFlush(): void {
+  kick?.();
+}

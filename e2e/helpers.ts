@@ -19,3 +19,36 @@ export async function setupTeamAndMatch(page: Page) {
   await page.getByRole('button', { name: '保存' }).click();
   await expect(page.getByRole('button', { name: /#10 山田 太郎/ })).toBeVisible();
 }
+
+export const ENDPOINT = 'https://script.google.com/macros/s/TEST/exec';
+
+/** Apps Script の代わりに受け取り、届いた中身を貯める */
+export async function fakeScript(page: Page) {
+  const bodies: Record<string, unknown>[] = [];
+  await page.route('**/script.google.com/**', async (route) => {
+    bodies.push(JSON.parse(route.request().postData() ?? '{}'));
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
+  });
+  return bodies;
+}
+
+export async function saveSettings(page: Page) {
+  await page.goto(APP + '#/settings');
+  await page.getByLabel('Apps Script の URL').fill(ENDPOINT);
+  await page.getByLabel('合言葉').fill('secret');
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(page.getByText('保存しました')).toBeVisible();
+}
+
+export async function openRecord(page: Page, player = '#10 山田 太郎') {
+  await page.getByRole('button', { name: new RegExp(player) }).click();
+  await expect(page.getByText('プレーを選んでください')).toBeVisible();
+}
+
+export const zone = (page: Page, lane: number, col: number) => page.locator(`#pitch rect[data-lane="${lane}"][data-col="${col}"]`);
+
+export async function record(page: Page, play: string, zones: [number, number][], fail = false) {
+  await page.getByRole('button', { name: play, exact: true }).tap();
+  if (fail) await page.getByRole('button', { name: '失敗', exact: true }).tap();
+  for (const [l, c] of zones) await zone(page, l, c).tap();
+}

@@ -72,3 +72,30 @@ input.num { width: 96px; flex: none; }
 .player-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .player { min-height: 72px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; }
 .player .name { font-size: 20px; font-weight: 700; }
+
+/* 記録画面（iPad 横向き） */
+.rec { display: grid; grid-template-columns: 52fr 48fr; gap: 14px; min-height: calc(100vh - 40px); }
+.rec-left, .rec-right { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.video { background: #111; color: #bbb; border-radius: 8px; aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.video iframe { width: 100%; height: 100%; border: 0; }
+.controls { display: flex; gap: 6px; }
+.controls button { flex: 1; padding: 8px 6px; }
+.label { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
+.recent { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.recent li { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 4px 4px 12px; min-height: 52px; }
+.recent li:not(:first-child) { opacity: .7; }
+.time { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 14px; }
+.dir { display: flex; gap: 4px; }
+.dir button, button.small { padding: 4px 10px; font-size: 15px; }
+.who { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 6px 6px 14px; }
+.who .num { font-size: 22px; }
+.pad { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; }
+.play-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.play { padding: 8px 4px; font-size: 15px; min-height: 52px; }
+.play.fail { color: var(--danger); border-color: var(--danger); }
+.play.fail.on { background: var(--danger); color: #fff; }
+.hint { margin: 0; font-weight: 600; text-align: center; }
+.pitch svg { width: 100%; height: auto; display: block; border-radius: 8px; }
+.pitch rect[data-lane] { cursor: pointer; }
+.panel { background: var(--surface); border: 2px solid var(--accent); border-radius: var(--radius); padding: 12px; margin-bottom: 12px; max-width: 640px; }
+.jump { border: 0; background: none; text-align: left; padding: 0; min-height: 44px; }
