@@ -34,13 +34,14 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
 
   // 図: 全体マップ（絵だけ）、パス、ドリブル、守備、シュート。上に一言まとめ
   await expect(page.locator('#map-pass .summary')).toHaveText('パス 3本・成功 67%');
-  await expect(page.locator('#map-overall .summary')).toHaveText('パス 3本 67%・ドリブル 1本 100%・守備 1本 100%');
-  await expect(page.locator('#map-overall')).not.toContainText('パ3');
-  await expect(page.locator('#map-overall .mark')).toHaveCount(1);
-  await expect(page.locator('#map-overall path.dribble[data-style="wave"]')).toHaveCount(1);
+  await expect(page.locator('#map-overall-1H .summary')).toHaveText('パス 3本 67%・ドリブル 1本 100%・守備 1本 100%');
+  await expect(page.locator('#map-overall-1H')).not.toContainText('パ3');
+  await expect(page.locator('#map-overall-1H .mark')).toHaveCount(1);
+  await expect(page.locator('#map-overall-1H path.dribble[data-style="wave"]')).toHaveCount(1);
+  await expect(page.locator('#map-overall-2H .summary')).toHaveText('パス 0本・ドリブル 0本・守備 0本');
   await expect(page.locator('#map-defense .mark')).toHaveCount(1);
   await expect(page.locator('#map-shot .mark')).toHaveCount(1);
-  await expect(page.locator('#map-dribble .legend-item')).toHaveCount(5);
+  await expect(page.locator('#map-dribble-1H .legend-item')).toHaveCount(5);
 
   // 場所ごとの本数（パス・ドリブル）
   await expect(page.locator('#heatmap')).toContainText('3本');
@@ -61,8 +62,8 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
   expect(reports).toHaveLength(2);
   expect(reports.map((r) => r.playerFileName).sort()).toEqual(['#10 山田 太郎（サンプルFC）', '#7 佐藤 一郎（サンプルFC）']);
   for (const r of reports) {
-    expect(r.images).toHaveLength(5);
-    expect(r.images[0].label).toContain('全体マップ');
+    expect(r.images).toHaveLength(7);
+    expect(r.images[0].label).toContain('全体マップ（前半）');
     for (const img of r.images) expect(img.pngBase64.startsWith('iVBOR')).toBe(true);
     expect(r.stats.values[19][0]).toBe('パス成功');
     expect(r.statsTabName).toMatch(/^\d+\/\d+ vs テストFC スタッツ$/);

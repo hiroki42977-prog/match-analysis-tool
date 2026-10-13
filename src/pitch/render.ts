@@ -1,6 +1,6 @@
 import type { ZoneCell } from '../domain/stats';
 import type { Zone } from '../domain/types';
-import { PITCH, zoneCenter, zoneRect } from './geometry';
+import { PITCH, zoneRect } from './geometry';
 
 export type DribbleMove = 'regate' | 'conduccion' | 'proteccion';
 /**
@@ -116,23 +116,41 @@ function markLayer(marks: Mark[]): string {
   return out.join('');
 }
 
-/** 同じマスから出る矢印を、マスの中で少しずつずらす量（始点・終点を同じだけ動かす） */
-function offsets(arrows: Arrow[]): { dx: number; dy: number }[] {
-  const groups = new Map<string, number[]>();
-  arrows.forEach((a, i) => {
-    const k = `${a.from.lane}-${a.from.col}`;
-    groups.set(k, [...(groups.get(k) ?? []), i]);
-  });
-  const out = arrows.map(() => ({ dx: 0, dy: 0 }));
-  for (const idx of groups.values()) {
-    if (idx.length < 2) continue;
-    const radius = Math.min(4.5, 1.6 + idx.length * 0.5);
-    idx.forEach((i, n) => {
-      const t = (2 * Math.PI * n) / idx.length - Math.PI / 2;
-      out[i] = { dx: radius * 1.25 * Math.cos(t), dy: radius * Math.sin(t) };
+/** マスの中に n 個の点を等間隔に並べる（1個なら中心） */
+function zoneSlots(z: Zone, n: number): Pt[] {
+  const r = zoneRect(z);
+  if (n <= 1) return [{ x: r.x + r.w / 2, y: r.y + r.h / 2 }];
+  const cols = Math.ceil(Math.sqrt(n * 1.3));
+  const rows = Math.ceil(n / cols);
+  const m = 2.2;
+  const cw = (r.w - m * 2) / cols;
+  const ch = (r.h - m * 2) / rows;
+  return Array.from({ length: n }, (_, i) => ({ x: r.x + m + cw * (i % cols + .5), y: r.y + m + ch * (Math.floor(i / cols) + .5) }));
+}
+
+/**
+ * 矢印の始点と終点を、マスの中に散らした位置に割り当てる。
+ * 交差が減るよう、始点は行き先の上下の順、終点は出どころの上下の順に並べる
+ */
+function spread(arrows: Arrow[]): { p: Pt; q: Pt }[] {
+  const assign = (key: (a: Arrow) => Zone, other: (a: Arrow) => Zone) => {
+    const groups = new Map<string, number[]>();
+    arrows.forEach((a, i) => {
+      const z = key(a);
+      const k = `${z.lane}-${z.col}`;
+      groups.set(k, [...(groups.get(k) ?? []), i]);
     });
-  }
-  return out;
+    const out: Pt[] = [];
+    for (const idx of groups.values()) {
+      const sorted = [...idx].sort((i, j) => other(arrows[i]).lane - other(arrows[j]).lane || other(arrows[i]).col - other(arrows[j]).col);
+      const slots = zoneSlots(key(arrows[idx[0]]), idx.length);
+      sorted.forEach((i, n) => { out[i] = slots[n]; });
+    }
+    return out;
+  };
+  const starts = assign((a) => a.from, (a) => a.to);
+  const ends = assign((a) => a.to, (a) => a.from);
+  return arrows.map((_, i) => ({ p: starts[i], q: ends[i] }));
 }
 
 /**
@@ -149,18 +167,18 @@ function dribblePath(style: 'zigzag' | 'wave' | 'coil', p: Pt, q: Pt, tail: numb
   const body = Math.max(0.1, len - tail - 0.6);
   const pts: string[] = [`M${at(0, 0)}`];
   if (style === 'zigzag') {
-    const n = Math.max(4, Math.round(body / 1.5));
-    for (let i = 1; i <= n; i++) pts.push(`L${at((body * i) / n, i === n ? 0 : i % 2 ? 1.2 : -1.2)}`);
+    const n = Math.max(4, Math.round(body / 1.3));
+    for (let i = 1; i <= n; i++) pts.push(`L${at((body * i) / n, i === n ? 0 : i % 2 ? .8 : -.8)}`);
   } else if (style === 'wave') {
     const steps = Math.max(12, Math.round(body / 0.4));
     for (let i = 1; i <= steps; i++) {
       const d = (body * i) / steps;
-      pts.push(`L${at(d, 1.1 * Math.sin((d / 5) * 2 * Math.PI))}`);
+      pts.push(`L${at(d, .7 * Math.sin((d / 4) * 2 * Math.PI))}`);
     }
   } else {
-    const loops = Math.max(2, Math.round(body / 4));
+    const loops = Math.max(2, Math.round(body / 2.6));
     const steps = loops * 24;
-    const a = 1.3;
+    const a = .8;
     for (let i = 1; i <= steps; i++) {
       const u = i / steps;
       const t = 2 * Math.PI * loops * u;
@@ -173,23 +191,23 @@ function dribblePath(style: 'zigzag' | 'wave' | 'coil', p: Pt, q: Pt, tail: numb
 
 /** 矢印の線と、始点の●を分けて返す */
 function arrowLayer(arrows: Arrow[]): { lines: string; dots: string } {
-  const shift = offsets(arrows);
+  const pos = spread(arrows);
   const parts = arrows.map((a, i) => {
     const dribble = a.kind === 'dribble';
-    const width = dribble ? 0.8 : 0.6;
+    const width = dribble ? 0.6 : 0.5;
     const color = a.success ? ARROW : ARROW_FAIL;
     const dash = a.success ? '' : dribble ? ' stroke-dasharray="2.8 1.6"' : ' stroke-dasharray="1.6 1.2"';
-    const c0 = zoneCenter(a.from);
     const same = a.from.lane === a.to.lane && a.from.col === a.to.col;
+    const c0 = pos[i].p;
     if (same && !dribble) {
       const halo = a.success ? '' : `<circle cx="${f(c0.x)}" cy="${f(c0.y)}" r="1.4" fill="none" stroke="${HALO}" stroke-width="${f(width + .7)}"/>`;
       return { line: `${halo}<circle cx="${f(c0.x)}" cy="${f(c0.y)}" r="1.4" fill="none" stroke="${color}" stroke-width="${width}" stroke-opacity=".9"${dash}/>`, dot: '' };
     }
     // 同じマスの中のドリブルも線の形が分かるよう、マスの中に短い線を描く
-    const c1 = same ? { x: c0.x + 5.5, y: c0.y } : zoneCenter(a.to);
-    const start = same ? { x: c0.x - 5.5, y: c0.y } : c0;
-    const p = { x: start.x + shift[i].dx, y: start.y + shift[i].dy };
-    const q = { x: c1.x + shift[i].dx, y: c1.y + shift[i].dy };
+    const zr = zoneRect(a.from);
+    const sx = Math.min(c0.x, zr.x + zr.w - 7.5);
+    const p = same ? { x: sx - 2, y: c0.y } : c0;
+    const q = same ? { x: sx + 7, y: c0.y } : pos[i].q;
     const marker = `url(#ah${a.success ? '' : '-red'})`;
     let body: string;
     if (dribble) {

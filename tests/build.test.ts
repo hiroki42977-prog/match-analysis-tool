@@ -43,3 +43,19 @@ test('one-line summaries', () => {
   expect(summary('shot', evs)).toBe('シュート 2本・枠内 50%');
   expect(summary('overall', evs)).toBe('パス 4本 75%・ドリブル 1本 0%・守備 0本');
 });
+
+import { mapFigures } from '../src/report/build';
+
+test('overall and dribble maps are split into halves', () => {
+  const evs = [
+    ev({ half: '1H', type: 'dribble', subtype: 'regate' }),
+    ev({ half: '2H', type: 'dribble', subtype: 'regate' }),
+    ev({ half: '2H', type: 'dribble', subtype: 'proteccion', success: false }),
+  ];
+  const figs = mapFigures(evs);
+  expect(figs.map((f) => f.key)).toEqual(['overall-1H', 'overall-2H', 'pass', 'dribble-1H', 'dribble-2H', 'defense', 'shot']);
+  expect(figs.map((f) => f.title)).toEqual(['全体マップ（前半）', '全体マップ（後半）', 'パス', 'ドリブル（前半）', 'ドリブル（後半）', '守備', 'シュート']);
+  expect(figs[3].summary).toBe('ドリブル 1本・成功 100%');
+  expect(figs[4].summary).toBe('ドリブル 2本・成功 50%');
+  expect(figs[4].svg.arrows).toHaveLength(2);
+});

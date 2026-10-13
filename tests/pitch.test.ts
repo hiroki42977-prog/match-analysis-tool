@@ -134,3 +134,26 @@ test('a long legend row is shrunk to fit inside the frame', () => {
   expect(scale).toBeLessThan(1);
   expect(x).toBeGreaterThanOrEqual(-4);
 });
+
+test('arrows ending in the same zone end at different points', () => {
+  const svg = pitchSvg({ arrows: [
+    { from: { lane: 1, col: 1 }, to: { lane: 1, col: 4 }, kind: 'pass', success: true },
+    { from: { lane: 1, col: 2 }, to: { lane: 1, col: 4 }, kind: 'pass', success: true },
+  ] });
+  const ends = [...svg.matchAll(/<line x1="[\d.]+" y1="[\d.]+" x2="([\d.]+)" y2="([\d.]+)"[^>]*marker-end/g)].map((m) => `${m[1]},${m[2]}`);
+  expect(ends).toHaveLength(2);
+  expect(new Set(ends).size).toBe(2);
+});
+
+test('spread start points stay inside their zone', () => {
+  const arrows = Array.from({ length: 6 }, (_, i) => ({ from: { lane: 3, col: 2 }, to: { lane: 1 + (i % 5), col: 5 }, kind: 'pass' as const, success: true }));
+  const svg = pitchSvg({ arrows });
+  for (const m of svg.matchAll(/<circle class="start" cx="([\d.]+)" cy="([\d.]+)"/g)) {
+    const x = Number(m[1]);
+    const y = Number(m[2]);
+    expect(x).toBeGreaterThan(17.5);
+    expect(x).toBeLessThan(35);
+    expect(y).toBeGreaterThan(27.2);
+    expect(y).toBeLessThan(40.8);
+  }
+});

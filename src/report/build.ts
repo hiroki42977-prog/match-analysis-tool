@@ -43,6 +43,7 @@ export function dribbleArrows(events: PlayEvent[]): Arrow[] {
 }
 
 type SummaryKind = 'pass' | 'dribble' | 'defense' | 'shot' | 'overall';
+type FigureKey = 'overall-1H' | 'overall-2H' | 'pass' | 'dribble-1H' | 'dribble-2H' | 'defense' | 'shot';
 const NAME: Record<Exclude<SummaryKind, 'overall'>, string> = { pass: 'パス', dribble: 'ドリブル', defense: '守備', shot: 'シュート' };
 
 function countOf(events: PlayEvent[], type: PlayType) {
@@ -67,21 +68,37 @@ export function summary(kind: SummaryKind, events: PlayEvent[]): string {
 const OK_NG: LegendItem[] = [{ glyph: 'ok', label: '成功' }, { glyph: 'ng', label: '失敗' }];
 const DRIBBLE_ITEMS: LegendItem[] = [{ glyph: 'zigzag', label: 'レガーテ' }, { glyph: 'wave', label: 'コンドゥクシオン' }, { glyph: 'coil', label: 'プロテクション' }];
 
-export interface MapFigure { key: SummaryKind; title: string; summary: string; svg: PitchOptions }
+export interface MapFigure { key: FigureKey; title: string; summary: string; svg: PitchOptions }
 
-/** レポートと結果画面で使う図（全体・パス・ドリブル・守備・シュート）。凡例は図の中に絵で入る */
+const OVERALL_LEGEND: LegendItem[][] = [
+  [{ glyph: 'pass-ok', label: 'パス' }, ...DRIBBLE_ITEMS],
+  [{ glyph: 'circle', label: '奪取' }, { glyph: 'triangle', label: '1対1' }, { glyph: 'square', label: '空中戦' }, ...OK_NG],
+];
+
+/**
+ * レポートと結果画面で使う図。線が混み合う全体マップとドリブルは前半・後半に分ける。
+ * 凡例は図の中に絵で入る
+ */
 export function mapFigures(events: PlayEvent[]): MapFigure[] {
+  const halves = [['1H', '前半'], ['2H', '後半']] as const;
+  const overall = halves.map(([h, label]): MapFigure => {
+    const ev = events.filter((e) => e.half === h);
+    return { key: `overall-${h}`, title: `全体マップ（${label}）`, summary: summary('overall', ev), svg: {
+      arrows: [...passArrows(ev), ...dribbleArrows(ev)], marks: defenseMarks(ev), legend: OVERALL_LEGEND,
+    } };
+  });
+  const dribble = halves.map(([h, label]): MapFigure => {
+    const ev = events.filter((e) => e.half === h);
+    return { key: `dribble-${h}`, title: `ドリブル（${label}）`, summary: summary('dribble', ev), svg: {
+      arrows: dribbleArrows(ev), legend: [DRIBBLE_ITEMS, OK_NG],
+    } };
+  });
   return [
-    { key: 'overall', title: '全体マップ', summary: summary('overall', events), svg: {
-      arrows: [...passArrows(events), ...dribbleArrows(events)], marks: defenseMarks(events),
-      legend: [[{ glyph: 'pass-ok', label: 'パス' }, ...DRIBBLE_ITEMS], [{ glyph: 'circle', label: '奪取' }, { glyph: 'triangle', label: '1対1' }, { glyph: 'square', label: '空中戦' }, ...OK_NG]],
-    } },
+    ...overall,
     { key: 'pass', title: 'パス', summary: summary('pass', events), svg: {
       arrows: passArrows(events), legend: [[{ glyph: 'pass-ok', label: '成功' }, { glyph: 'pass-ng', label: '失敗' }]],
     } },
-    { key: 'dribble', title: 'ドリブル', summary: summary('dribble', events), svg: {
-      arrows: dribbleArrows(events), legend: [DRIBBLE_ITEMS, OK_NG],
-    } },
+    ...dribble,
     { key: 'defense', title: '守備', summary: summary('defense', events), svg: {
       marks: defenseMarks(events), legend: [[{ glyph: 'circle', label: 'ボール奪取' }, { glyph: 'triangle', label: '1対1' }, { glyph: 'square', label: '空中戦' }, ...OK_NG]],
     } },

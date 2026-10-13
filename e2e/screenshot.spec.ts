@@ -31,10 +31,18 @@ test('screenshot: results screen', async ({ page }) => {
   await record(page, '枠内R', [[3, 6]]);
   await record(page, '枠外L', [[3, 6]]);
   await record(page, '枠外R', [[2, 6]]);
+  // 混み合った状態を見るため、同じマスから出るパスとドリブルを足す
+  for (const [z, f] of [[[3, 3], [3, 5]], [[3, 3], [2, 5]], [[3, 3], [4, 4]], [[2, 3], [3, 5]], [[4, 3], [3, 5]]] as [number, number][][]) {
+    await record(page, 'パス', [z as [number, number], f as [number, number]]);
+  }
+  await record(page, 'レガーテ', [[3, 3], [3, 4]]);
+  await record(page, 'コンドゥクシオン', [[3, 3], [2, 4]]);
+  await record(page, 'プロテクション', [[3, 3], [3, 3]]);
+  await record(page, 'レガーテ', [[2, 3], [3, 4]], true);
   await page.getByRole('button', { name: '結果を見る' }).tap();
   await page.locator('.chips').getByRole('button', { name: '#10 山田 太郎' }).tap();
   await page.screenshot({ path: process.env.SHOTS + '/results.png', fullPage: true });
-  for (const k of ['overall', 'pass', 'dribble', 'defense', 'shot']) {
+  for (const k of ['overall-1H', 'pass', 'dribble-1H', 'defense', 'shot']) {
     await page.locator(`#map-${k}`).screenshot({ path: process.env.SHOTS + `/map-${k}.png` });
   }
 });
