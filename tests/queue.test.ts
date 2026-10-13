@@ -38,3 +38,29 @@ test('flush treats a thrown send as failure', async () => {
   const r = await flush(async () => { throw new Error('offline'); });
   expect(r).toEqual({ sent: 0, remaining: 1 });
 });
+
+test('edit while sending is not lost', async () => {
+  await queueUpsert('a', ['v1']);
+  const sent: unknown[] = [];
+  await flush(async (op) => {
+    sent.push(op.row);
+    await queueUpsert('a', ['v2']); // 送信中に手修正
+    return true;
+  });
+  const ops = await db.listOps();
+  expect(ops.map((o) => o.row)).toEqual([['v2']]);
+  await flush(async (op) => { sent.push(op.row); return true; });
+  expect(sent).toEqual([['v1'], ['v2']]);
+});
+
+test('delete while sending keeps the delete', async () => {
+  await queueUpsert('a', ['v1']);
+  await flush(async () => {
+    await queueDelete('a');
+    return false; // 送信失敗
+  });
+  expect((await db.listOps()).map((o) => [o.kind, o.row ?? null, o.attempts])).toEqual([
+    ['upsertEvent', ['v1'], 1],
+    ['deleteEvent', null, 0],
+  ]);
+});

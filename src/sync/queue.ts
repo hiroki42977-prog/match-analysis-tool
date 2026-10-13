@@ -5,15 +5,18 @@ import { postToScript } from './client';
 
 type Row = (string | number | boolean)[];
 
+// 送信中の op。送信中に書き換えると、送信後に消されて修正が届かなくなるので触らない
+let inFlight: number | null = null;
+
 export async function queueUpsert(eventId: string, row: Row): Promise<void> {
-  const pending = (await db.listOps()).find((o) => o.kind === 'upsertEvent' && o.eventId === eventId);
+  const pending = (await db.listOps()).find((o) => o.kind === 'upsertEvent' && o.eventId === eventId && o.seq !== inFlight);
   if (pending) await db.updateOp({ ...pending, row });
   else await db.addOp({ kind: 'upsertEvent', eventId, row, attempts: 0, createdAt: new Date().toISOString() });
 }
 
 export async function queueDelete(eventId: string): Promise<void> {
   for (const o of await db.listOps()) {
-    if (o.kind === 'upsertEvent' && o.eventId === eventId) await db.removeOp(o.seq!);
+    if (o.kind === 'upsertEvent' && o.eventId === eventId && o.seq !== inFlight) await db.removeOp(o.seq!);
   }
   await db.addOp({ kind: 'deleteEvent', eventId, attempts: 0, createdAt: new Date().toISOString() });
 }
@@ -28,10 +31,13 @@ export async function flush(send: (op: QueuedOp) => Promise<boolean>): Promise<{
   let sent = 0;
   for (const op of ops) {
     let ok = false;
+    inFlight = op.seq!;
     try {
       ok = await send(op);
     } catch {
       ok = false;
+    } finally {
+      inFlight = null;
     }
     if (!ok) {
       await db.updateOp({ ...op, attempts: op.attempts + 1 });
