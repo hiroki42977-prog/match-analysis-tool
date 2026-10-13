@@ -37,6 +37,10 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
   await page.locator('#heatmap-tabs').getByRole('button', { name: '守備' }).tap();
   await expect(page.locator('#heatmap')).toContainText('1本');
 
+  // 全体マップ: ゾーン(3,2)にパス3本、(2,2)にドリブル1本＋守備1本
+  await expect(page.locator('#overall')).toContainText('パ3 ド0 守0');
+  await expect(page.locator('#overall')).toContainText('パ0 ド1 守1');
+
   // チーム全体
   await expect(page.locator('#team-table')).toContainText('#7 佐藤 一郎');
 
@@ -53,7 +57,8 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
   expect(reports).toHaveLength(2);
   expect(reports.map((r) => r.playerFileName).sort()).toEqual(['#10 山田 太郎（サンプルFC）', '#7 佐藤 一郎（サンプルFC）']);
   for (const r of reports) {
-    expect(r.images).toHaveLength(4);
+    expect(r.images).toHaveLength(5);
+    expect(r.images[4].label).toContain('全体マップ');
     for (const img of r.images) expect(img.pngBase64.startsWith('iVBOR')).toBe(true);
     expect(r.stats.values[19][0]).toBe('パス成功');
     expect(r.statsTabName).toMatch(/^\d+\/\d+ vs テストFC スタッツ$/);

@@ -1,7 +1,7 @@
-import { computeStats, rate, zoneCells, type Count, type HalfStats } from '../../domain/stats';
+import { computeStats, overallCells, rate, zoneCells, type Count, type HalfStats } from '../../domain/stats';
 import type { PlayEvent, PlayType, Player } from '../../domain/types';
 import { pitchSvg } from '../../pitch/render';
-import { buildReports, dribbleArrows, passArrows } from '../../report/build';
+import { buildReports, dribbleArrows, OVERALL_LABEL, passArrows } from '../../report/build';
 import { eventRow, eventsToCsv } from '../../report/rows';
 import * as db from '../../storage/db';
 import { h, svgEl } from '../dom';
@@ -106,12 +106,14 @@ export async function resultsScreen(root: HTMLElement, params: Record<string, st
       h('div', { class: 'cols' },
         h('section', {}, h('h2', {}, '集計'), statsTable(mine)),
         h('section', {},
+          h('h2', {}, OVERALL_LABEL),
+          h('div', { id: 'overall', class: 'pitch' }, svgEl(pitchSvg({ overall: overallCells(mine), arrows: [...passArrows(mine), ...dribbleArrows(mine)] }))),
           h('h2', {}, 'ヒートマップ'),
           h('div', { id: 'heatmap-tabs', class: 'seg' }, ...HEAT_TABS.map((t) => h('button', { class: t.type === heatType ? 'on' : '', onclick: () => { heatType = t.type; paint(); } }, t.label))),
           h('div', { id: 'heatmap', class: 'pitch' }, svgEl(pitchSvg({ heat: zoneCells(mine, heatType) }))),
           h('h2', {}, 'パス（白い実線＝成功・赤い破線＝失敗）'),
           h('div', { class: 'pitch' }, svgEl(pitchSvg({ arrows: passArrows(mine) }))),
-          h('h2', {}, 'ドリブル（白＝成功・赤い破線＝失敗）'),
+          h('h2', {}, 'ドリブル（波線。白＝成功・赤い破線＝失敗）'),
           h('div', { class: 'pitch' }, svgEl(pitchSvg({ arrows: dribbleArrows(mine) }))),
         ),
       ),

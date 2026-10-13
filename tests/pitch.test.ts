@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import { zoneAt, zoneCenter, zoneRect } from '../src/pitch/geometry';
 import { pitchSvg } from '../src/pitch/render';
-import type { ZoneCell } from '../src/domain/stats';
+import type { OverallCell, ZoneCell } from '../src/domain/stats';
 
 test('zoneRect / zoneCenter', () => {
   expect(zoneRect({ lane: 1, col: 1 })).toEqual({ x: 0, y: 0, w: 17.5, h: 13.6 });
@@ -24,28 +24,60 @@ test('30 tappable zone rects', () => {
   expect(count(pitchSvg({}), /<rect[^>]*data-lane=/g)).toBe(30);
 });
 
-test('arrows: success white solid, failure red dashed', () => {
-  const base = count(pitchSvg({}), /<circle/g);
+test('pass arrows: white solid / red dashed, with a start dot', () => {
   const ok = pitchSvg({ arrows: [{ from: { lane: 1, col: 1 }, to: { lane: 1, col: 3 }, kind: 'pass', success: true }] });
   expect(ok).toMatch(/<line[^>]*stroke="#ffffff"[^>]*marker-end="url\(#ah\)"/);
-  expect(ok).not.toMatch(/<line[^>]*stroke="#ff4d4f"/);
+  expect(count(ok, /class="start"/g)).toBe(1);
+  expect(ok).toMatch(/<circle class="start"[^>]*fill="#ffffff"/);
   const ng = pitchSvg({ arrows: [{ from: { lane: 1, col: 1 }, to: { lane: 1, col: 3 }, kind: 'pass', success: false }] });
   expect(ng).toMatch(/<line[^>]*stroke="#ff4d4f"[^>]*stroke-dasharray[^>]*marker-end="url\(#ah-red\)"/);
-  const dr = pitchSvg({ arrows: [{ from: { lane: 2, col: 1 }, to: { lane: 2, col: 4 }, kind: 'dribble', success: false }] });
-  expect(dr).toMatch(/<line[^>]*stroke="#ff4d4f"[^>]*stroke-width="1.6"[^>]*stroke-dasharray/);
+  expect(ng).toMatch(/<circle class="start"[^>]*fill="#ff4d4f"/);
+});
+
+test('dribble arrows are wavy paths', () => {
+  const ok = pitchSvg({ arrows: [{ from: { lane: 2, col: 1 }, to: { lane: 2, col: 4 }, kind: 'dribble', success: true }] });
+  expect(ok).not.toMatch(/<line[^>]*marker-end/);
+  const d = ok.match(/<path class="dribble" d="([^"]+)"/)![1];
+  expect(d.split('L').length).toBeGreaterThan(10);
+  const ng = pitchSvg({ arrows: [{ from: { lane: 2, col: 1 }, to: { lane: 2, col: 4 }, kind: 'dribble', success: false }] });
+  expect(ng).toMatch(/<path class="dribble"[^>]*stroke="#ff4d4f"[^>]*stroke-dasharray/);
+});
+
+test('arrows from the same zone are shifted apart', () => {
+  const svg = pitchSvg({ arrows: [
+    { from: { lane: 3, col: 2 }, to: { lane: 3, col: 4 }, kind: 'pass', success: true },
+    { from: { lane: 3, col: 2 }, to: { lane: 2, col: 4 }, kind: 'pass', success: true },
+    { from: { lane: 3, col: 2 }, to: { lane: 4, col: 4 }, kind: 'pass', success: false },
+  ] });
+  const starts = [...svg.matchAll(/<circle class="start" cx="([\d.]+)" cy="([\d.]+)"/g)].map((m) => `${m[1]},${m[2]}`);
+  expect(starts).toHaveLength(3);
+  expect(new Set(starts).size).toBe(3);
+});
+
+test('loop (same zone) arrows draw a ring, no start dot', () => {
+  const base = count(pitchSvg({}), /<circle/g);
   const sameOk = pitchSvg({ arrows: [{ from: { lane: 2, col: 2 }, to: { lane: 2, col: 2 }, kind: 'pass', success: true }] });
   expect(count(sameOk, /<circle/g)).toBe(base + 1);
   const sameNg = pitchSvg({ arrows: [{ from: { lane: 2, col: 2 }, to: { lane: 2, col: 2 }, kind: 'pass', success: false }] });
   expect(count(sameNg, /<circle/g)).toBe(base + 2); // 暗い縁取り＋赤い丸
-  expect(sameNg).toMatch(/<circle[^>]*stroke="#ff4d4f"/);
 });
 
-test('heat labels', () => {
-  const heat: ZoneCell[] = [{ lane: 2, col: 2, count: 3, success: 2, rate: 2 / 3 }, { lane: 1, col: 1, count: 1, success: 0, rate: 0 }];
+test('heat cells show ○/× counts and a success/fail bar', () => {
+  const heat: ZoneCell[] = [{ lane: 2, col: 2, count: 4, success: 3, rate: 0.75 }, { lane: 1, col: 1, count: 1, success: 0, rate: 0 }];
   const svg = pitchSvg({ heat });
-  expect(svg).toContain('3本');
-  expect(svg).toContain('67%');
-  expect(svg).toContain('0%');
+  expect(svg).toContain('4本 75%');
+  expect(svg).toContain('○3');
+  expect(svg).toContain('×1');
+  expect(svg).toContain('1本 0%');
+  expect(count(svg, /<rect class="bar-ok"/g)).toBe(1); // 成功0本のマスは白い棒なし
+  expect(count(svg, /<rect class="bar-ng"/g)).toBe(2);
+});
+
+test('overall map shows breakdown per zone', () => {
+  const overall: OverallCell[] = [{ lane: 2, col: 3, pass: 3, dribble: 2, defense: 1, count: 6, success: 4, rate: 4 / 6 }];
+  const svg = pitchSvg({ overall });
+  expect(svg).toContain('6本 67%');
+  expect(svg).toContain('パ3 ド2 守1');
 });
 
 test('highlight marks zone', () => {

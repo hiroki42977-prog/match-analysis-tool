@@ -1,4 +1,4 @@
-import { computeStats, zoneCells } from '../domain/stats';
+import { computeStats, overallCells, zoneCells } from '../domain/stats';
 import type { Match, PlayEvent, Player } from '../domain/types';
 import type { Arrow } from '../pitch/render';
 import { pitchSvg } from '../pitch/render';
@@ -22,6 +22,8 @@ export function reportNames(m: Match, p: Player, teamName: string): Pick<ReportP
   const base = `${mm}/${dd} vs ${m.opponent}`;
   return { playerFileName: `#${p.number} ${p.name}（${teamName}）`, statsTabName: `${base} スタッツ`, mapTabName: `${base} マップ` };
 }
+
+export const OVERALL_LABEL = '全体マップ（パ＝パス・ド＝ドリブル・守＝守備／実線＝パス・波線＝ドリブル／白＝成功・赤い破線＝失敗）';
 
 export function passArrows(events: PlayEvent[]): Arrow[] {
   return events.filter((e) => e.type === 'pass' && e.endZone).map((e) => ({ from: e.startZone, to: e.endZone!, kind: 'pass', success: e.success }));
@@ -53,9 +55,10 @@ export async function buildReports(
     const title = `${name} ｜ ${m.date} vs ${m.opponent} ｜ ${m.format}人制`;
     const images: ReportImage[] = [
       { label: 'パス（白い実線＝成功・赤い破線＝失敗）', pngBase64: await svgToPngBase64(pitchSvg({ arrows: passArrows(mine) })) },
-      { label: 'ドリブル（白＝成功・赤い破線＝失敗）', pngBase64: await svgToPngBase64(pitchSvg({ arrows: dribbleArrows(mine) })) },
+      { label: 'ドリブル（波線。白＝成功・赤い破線＝失敗）', pngBase64: await svgToPngBase64(pitchSvg({ arrows: dribbleArrows(mine) })) },
       { label: '守備のヒートマップ', pngBase64: await svgToPngBase64(pitchSvg({ heat: zoneCells(mine, 'defense') })) },
       { label: 'シュートのヒートマップ', pngBase64: await svgToPngBase64(pitchSvg({ heat: zoneCells(mine, 'shot') })) },
+      { label: OVERALL_LABEL, pngBase64: await svgToPngBase64(pitchSvg({ overall: overallCells(mine), arrows: [...passArrows(mine), ...dribbleArrows(mine)] })) },
     ];
     const payload: ReportPayload = {
       action: 'buildReport',
