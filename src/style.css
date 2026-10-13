@@ -116,3 +116,5 @@ input.num { width: 96px; flex: none; }
 @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
 .play:disabled { opacity: .45; }
 .pitch.disabled { opacity: .5; }
+.figure h2 { margin-bottom: 0; }
+.summary { font-size: 20px; font-weight: 700; margin: 2px 0 8px; font-variant-numeric: tabular-nums; }

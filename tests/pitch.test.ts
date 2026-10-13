@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import { zoneAt, zoneCenter, zoneRect } from '../src/pitch/geometry';
 import { pitchSvg } from '../src/pitch/render';
-import type { OverallCell, ZoneCell } from '../src/domain/stats';
+import type { ZoneCell } from '../src/domain/stats';
 
 test('zoneRect / zoneCenter', () => {
   expect(zoneRect({ lane: 1, col: 1 })).toEqual({ x: 0, y: 0, w: 17.5, h: 13.6 });
@@ -34,15 +34,6 @@ test('pass arrows: white solid / red dashed, with a start dot', () => {
   expect(ng).toMatch(/<circle class="start"[^>]*fill="#ff4d4f"/);
 });
 
-test('dribble arrows are wavy paths', () => {
-  const ok = pitchSvg({ arrows: [{ from: { lane: 2, col: 1 }, to: { lane: 2, col: 4 }, kind: 'dribble', success: true }] });
-  expect(ok).not.toMatch(/<line[^>]*marker-end/);
-  const d = ok.match(/<path class="dribble" d="([^"]+)"/)![1];
-  expect(d.split('L').length).toBeGreaterThan(10);
-  const ng = pitchSvg({ arrows: [{ from: { lane: 2, col: 1 }, to: { lane: 2, col: 4 }, kind: 'dribble', success: false }] });
-  expect(ng).toMatch(/<path class="dribble"[^>]*stroke="#ff4d4f"[^>]*stroke-dasharray/);
-});
-
 test('arrows from the same zone are shifted apart', () => {
   const svg = pitchSvg({ arrows: [
     { from: { lane: 3, col: 2 }, to: { lane: 3, col: 4 }, kind: 'pass', success: true },
@@ -73,21 +64,8 @@ test('heat cells show ○/× counts and a success/fail bar', () => {
   expect(count(svg, /<rect class="bar-ng"/g)).toBe(2);
 });
 
-test('overall map shows breakdown per zone', () => {
-  const overall: OverallCell[] = [{ lane: 2, col: 3, pass: 3, dribble: 2, defense: 1, count: 6, success: 4, rate: 4 / 6 }];
-  const svg = pitchSvg({ overall });
-  expect(svg).toContain('6本 67%');
-  expect(svg).toContain('パ3 ド2 守1');
-});
-
 test('highlight marks zone', () => {
   expect(pitchSvg({ highlight: [{ lane: 3, col: 3 }] })).toMatch(/data-lane="3" data-col="3"[^>]*class="zone on"/);
-});
-
-test('dribble start dot carries the subtype letter', () => {
-  const svg = pitchSvg({ arrows: [{ from: { lane: 2, col: 1 }, to: { lane: 2, col: 4 }, kind: 'dribble', success: true, tag: 'レ' }] });
-  expect(svg).toMatch(/<circle class="start"[^>]*r="1.7"/);
-  expect(svg).toMatch(/<text class="tag"[^>]*>レ<\/text>/);
 });
 
 test('marks: shape by kind, white = success / red = failure, spread inside the zone', () => {
@@ -114,15 +92,45 @@ test('marks: shape by kind, white = success / red = failure, spread inside the z
   }
 });
 
-test('overall labels have no white box, text is outlined instead', () => {
-  const overall: OverallCell[] = [{ lane: 2, col: 3, pass: 3, dribble: 2, defense: 1, count: 6, success: 4, rate: 4 / 6 }];
-  const svg = pitchSvg({ overall });
-  expect(svg).not.toContain('fill-opacity=".88"');
-  expect(count(svg, />パ3 ド2 守1<\/text>/g)).toBe(2); // ふち用と本体
-  expect(svg).toMatch(/<text[^>]*stroke="#ffffff"[^>]*>パ3 ド2 守1<\/text>/);
+
+test('dribble line shape follows the move: zigzag / wave / coil', () => {
+  const one = (move: 'regate' | 'conduccion' | 'proteccion', success = true) =>
+    pitchSvg({ arrows: [{ from: { lane: 2, col: 1 }, to: { lane: 2, col: 4 }, kind: 'dribble', success, move }] });
+  expect(one('regate')).toMatch(/<path class="dribble" data-style="zigzag"/);
+  expect(one('conduccion')).toMatch(/<path class="dribble" data-style="wave"/);
+  expect(one('proteccion')).toMatch(/<path class="dribble" data-style="coil"/);
+  expect(one('regate', false)).toMatch(/<path class="dribble"[^>]*stroke="#ff4d4f"[^>]*stroke-dasharray/);
+  expect(one('conduccion')).not.toMatch(/<line[^>]*marker-end/);
+  expect(one('conduccion')).not.toContain('class="tag"');
 });
 
-test('dribble that stays in one zone shows its letter inside the ring', () => {
-  const svg = pitchSvg({ arrows: [{ from: { lane: 4, col: 4 }, to: { lane: 4, col: 4 }, kind: 'dribble', success: true, tag: 'レ' }] });
-  expect(svg).toMatch(/<text class="tag"[^>]*>レ<\/text>/);
+test('dribble inside one zone still shows its line shape', () => {
+  const svg = pitchSvg({ arrows: [{ from: { lane: 4, col: 4 }, to: { lane: 4, col: 4 }, kind: 'dribble', success: true, move: 'proteccion' }] });
+  expect(svg).toMatch(/<path class="dribble" data-style="coil"/);
+});
+
+test('legend rows are drawn under a shrunk pitch, keeping the 113x76 frame', () => {
+  const svg = pitchSvg({ legend: [[{ glyph: 'pass-ok', label: '成功' }, { glyph: 'pass-ng', label: '失敗' }]] });
+  expect(svg).toContain('viewBox="-4 -4 113 76"');
+  expect(svg).toMatch(/<svg x="[\d.-]+" y="-4" width="[\d.]+" height="[\d.]+" viewBox="-4 -4 113 76"/);
+  expect(count(svg, /class="legend-item"/g)).toBe(2);
+  expect(svg).toContain('>成功</text>');
+  expect(svg).toContain('>失敗</text>');
+  expect(count(pitchSvg({}), /<svg /g)).toBe(1); // 凡例なしなら入れ子にしない
+});
+
+test('every legend glyph renders', () => {
+  const glyphs = ['pass-ok', 'pass-ng', 'zigzag', 'wave', 'coil', 'circle', 'triangle', 'square', 'diamond', 'ok', 'ng'] as const;
+  const svg = pitchSvg({ legend: [glyphs.map((g) => ({ glyph: g, label: g }))] });
+  expect(count(svg, /class="legend-item"/g)).toBe(glyphs.length);
+});
+
+test('a long legend row is shrunk to fit inside the frame', () => {
+  const items = ['レガーテ', 'コンドゥクシオン', 'プロテクション', '成功', '失敗', 'ボール奪取'].map((label) => ({ glyph: 'wave' as const, label }));
+  const svg = pitchSvg({ legend: [items] });
+  const g = svg.match(/<g class="legend-row" transform="translate\(([\d.-]+) [\d.-]+\) scale\(([\d.]+)\)"/)!;
+  const x = Number(g[1]);
+  const scale = Number(g[2]);
+  expect(scale).toBeLessThan(1);
+  expect(x).toBeGreaterThanOrEqual(-4);
 });

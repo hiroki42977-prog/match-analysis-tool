@@ -97,30 +97,3 @@ export function zoneCells(events: PlayEvent[], type: PlayType): ZoneCell[] {
   return cells;
 }
 
-export interface OverallCell {
-  lane: number;
-  col: number;
-  pass: number;
-  dribble: number;
-  defense: number;
-  count: number;
-  success: number;
-  rate: number | null;
-}
-
-/** 全体マップ用。パス・ドリブル・守備を始点ゾーンごとに数える（シュートは入れない） */
-export function overallCells(events: PlayEvent[]): OverallCell[] {
-  const cells: OverallCell[] = [];
-  for (let lane = 1; lane <= 5; lane++) {
-    for (let col = 1; col <= 6; col++) cells.push({ lane, col, pass: 0, dribble: 0, defense: 0, count: 0, success: 0, rate: null });
-  }
-  for (const e of events) {
-    if (e.type === 'shot') continue;
-    const c = cells[(e.startZone.lane - 1) * 6 + (e.startZone.col - 1)];
-    c[e.type]++;
-    c.count++;
-    if (e.success) c.success++;
-  }
-  for (const c of cells) c.rate = rate({ success: c.success, fail: c.count - c.success });
-  return cells;
-}

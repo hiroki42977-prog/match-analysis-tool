@@ -63,18 +63,3 @@ test('zoneCells counts by start zone, always 30 cells', () => {
   expect(cells.reduce((n, c) => n + c.count, 0)).toBe(2);
 });
 
-import { overallCells } from '../src/domain/stats';
-
-test('overallCells counts pass/dribble/defense per start zone, shots excluded', () => {
-  const z = { lane: 2, col: 3 };
-  const cells = overallCells([
-    ev({ type: 'pass', startZone: z, success: true }),
-    ev({ type: 'pass', startZone: z, success: false }),
-    ev({ type: 'dribble', subtype: 'regate', startZone: z, success: true }),
-    ev({ type: 'defense', subtype: 'aerial', startZone: z, endZone: null, success: true }),
-    ev({ type: 'shot', subtype: 'on_target', foot: 'R', startZone: z, endZone: null, success: true }),
-  ]);
-  expect(cells).toHaveLength(30);
-  expect(cells[6 + 2]).toEqual({ lane: 2, col: 3, pass: 2, dribble: 1, defense: 1, count: 4, success: 3, rate: 0.75 });
-  expect(cells[0]).toEqual({ lane: 1, col: 1, pass: 0, dribble: 0, defense: 0, count: 0, success: 0, rate: null });
-});

@@ -32,17 +32,18 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
   await expect(stats.getByRole('row', { name: /パス 合計/ })).toContainText('2/3 67%');
   await expect(stats.getByRole('row', { name: /後ろ/ }).first()).toContainText('0/1 0%');
 
-  // ヒートマップ: パスはゾーン(3,2)に3本
-  await expect(page.locator('#heatmap')).toContainText('3本');
-  await page.locator('#heatmap-tabs').getByRole('button', { name: '守備' }).tap();
-  await expect(page.locator('#heatmap .mark')).toHaveCount(1);
-  await page.locator('#heatmap-tabs').getByRole('button', { name: 'シュート' }).tap();
-  await expect(page.locator('#heatmap .mark')).toHaveCount(1);
-  await expect(page.locator('#dribble-map .tag')).toHaveText(['コ']);
+  // 図: 全体マップ（絵だけ）、パス、ドリブル、守備、シュート。上に一言まとめ
+  await expect(page.locator('#map-pass .summary')).toHaveText('パス 3本・成功 67%');
+  await expect(page.locator('#map-overall .summary')).toHaveText('パス 3本 67%・ドリブル 1本 100%・守備 1本 100%');
+  await expect(page.locator('#map-overall')).not.toContainText('パ3');
+  await expect(page.locator('#map-overall .mark')).toHaveCount(1);
+  await expect(page.locator('#map-overall path.dribble[data-style="wave"]')).toHaveCount(1);
+  await expect(page.locator('#map-defense .mark')).toHaveCount(1);
+  await expect(page.locator('#map-shot .mark')).toHaveCount(1);
+  await expect(page.locator('#map-dribble .legend-item')).toHaveCount(5);
 
-  // 全体マップ: ゾーン(3,2)にパス3本、(2,2)にドリブル1本＋守備1本
-  await expect(page.locator('#overall')).toContainText('パ3 ド0 守0');
-  await expect(page.locator('#overall')).toContainText('パ0 ド1 守1');
+  // 場所ごとの本数（パス・ドリブル）
+  await expect(page.locator('#heatmap')).toContainText('3本');
 
   // チーム全体
   await expect(page.locator('#team-table')).toContainText('#7 佐藤 一郎');
@@ -61,7 +62,7 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
   expect(reports.map((r) => r.playerFileName).sort()).toEqual(['#10 山田 太郎（サンプルFC）', '#7 佐藤 一郎（サンプルFC）']);
   for (const r of reports) {
     expect(r.images).toHaveLength(5);
-    expect(r.images[4].label).toContain('全体マップ');
+    expect(r.images[0].label).toContain('全体マップ');
     for (const img of r.images) expect(img.pngBase64.startsWith('iVBOR')).toBe(true);
     expect(r.stats.values[19][0]).toBe('パス成功');
     expect(r.statsTabName).toMatch(/^\d+\/\d+ vs テストFC スタッツ$/);

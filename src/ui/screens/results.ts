@@ -1,7 +1,7 @@
-import { computeStats, overallCells, rate, zoneCells, type Count, type HalfStats } from '../../domain/stats';
+import { computeStats, rate, zoneCells, type Count, type HalfStats } from '../../domain/stats';
 import type { PlayEvent, PlayType, Player } from '../../domain/types';
 import { pitchSvg } from '../../pitch/render';
-import { buildReports, DEFENSE_LABEL, defenseMarks, DRIBBLE_LABEL, dribbleArrows, OVERALL_LABEL, passArrows, SHOT_LABEL, shotMarks } from '../../report/build';
+import { buildReports, mapFigures } from '../../report/build';
 import { eventRow, eventsToCsv } from '../../report/rows';
 import * as db from '../../storage/db';
 import { h, svgEl } from '../dom';
@@ -55,9 +55,7 @@ function teamTable(players: Player[], events: PlayEvent[]): HTMLElement {
   );
 }
 
-const HEAT_TABS: { type: PlayType; label: string }[] = [
-  { type: 'pass', label: 'パス' }, { type: 'dribble', label: 'ドリブル' }, { type: 'defense', label: '守備' }, { type: 'shot', label: 'シュート' },
-];
+const HEAT_TABS: { type: PlayType; label: string }[] = [{ type: 'pass', label: 'パス' }, { type: 'dribble', label: 'ドリブル' }];
 
 export async function resultsScreen(root: HTMLElement, params: Record<string, string>) {
   const m = await db.getMatch(params.id);
@@ -106,22 +104,17 @@ export async function resultsScreen(root: HTMLElement, params: Record<string, st
       h('div', { class: 'cols' },
         h('section', {}, h('h2', {}, '集計'), statsTable(mine)),
         h('section', {},
-          h('h2', {}, OVERALL_LABEL),
-          h('div', { id: 'overall', class: 'pitch' }, svgEl(pitchSvg({ overall: overallCells(mine), arrows: [...passArrows(mine), ...dribbleArrows(mine)] }))),
-          h('h2', {}, 'ヒートマップ'),
+          // 図ごとに「見出し → 一言まとめ → 図（凡例は図の下に絵で）」
+          ...mapFigures(mine).map((fig) => h('div', { id: `map-${fig.key}`, class: 'figure' },
+            h('h2', {}, fig.title),
+            h('p', { class: 'summary' }, fig.summary),
+            h('div', { class: 'pitch' }, svgEl(pitchSvg(fig.svg))))),
+          h('h2', {}, '場所ごとの本数'),
           h('div', { id: 'heatmap-tabs', class: 'seg' }, ...HEAT_TABS.map((t) => h('button', { class: t.type === heatType ? 'on' : '', onclick: () => { heatType = t.type; paint(); } }, t.label))),
-          // 守備とシュートは種類が分かる印、パスとドリブルはマスごとの本数
-          heatType === 'defense' || heatType === 'shot'
-            ? h('p', { class: 'muted' }, heatType === 'defense' ? DEFENSE_LABEL : SHOT_LABEL)
-            : '',
-          h('div', { id: 'heatmap', class: 'pitch' }, svgEl(pitchSvg(
-            heatType === 'defense' ? { marks: defenseMarks(mine) }
-              : heatType === 'shot' ? { marks: shotMarks(mine) }
-                : { heat: zoneCells(mine, heatType) }))),
-          h('h2', {}, 'パス（白い実線＝成功・赤い破線＝失敗）'),
-          h('div', { class: 'pitch' }, svgEl(pitchSvg({ arrows: passArrows(mine) }))),
-          h('h2', {}, DRIBBLE_LABEL),
-          h('div', { id: 'dribble-map', class: 'pitch' }, svgEl(pitchSvg({ arrows: dribbleArrows(mine) }))),
+          h('div', { id: 'heatmap', class: 'pitch' }, svgEl(pitchSvg({
+            heat: zoneCells(mine, heatType),
+            legend: [[{ glyph: 'ok', label: '○ 成功' }, { glyph: 'ng', label: '× 失敗' }]],
+          }))),
         ),
       ),
       h('h2', {}, 'チーム全体'),

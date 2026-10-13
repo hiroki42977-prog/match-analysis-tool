@@ -34,10 +34,7 @@ test('screenshot: results screen', async ({ page }) => {
   await page.getByRole('button', { name: '結果を見る' }).tap();
   await page.locator('.chips').getByRole('button', { name: '#10 山田 太郎' }).tap();
   await page.screenshot({ path: process.env.SHOTS + '/results.png', fullPage: true });
-  await page.locator('#heatmap-tabs').getByRole('button', { name: '守備' }).tap();
-  await page.locator('#heatmap').screenshot({ path: process.env.SHOTS + '/defense.png' });
-  await page.locator('#heatmap-tabs').getByRole('button', { name: 'シュート' }).tap();
-  await page.locator('#heatmap').screenshot({ path: process.env.SHOTS + '/shot-tab.png' });
-  await page.locator('#overall').screenshot({ path: process.env.SHOTS + '/overall.png' });
-  await page.locator('#dribble-map').screenshot({ path: process.env.SHOTS + '/dribble.png' });
+  for (const k of ['overall', 'pass', 'dribble', 'defense', 'shot']) {
+    await page.locator(`#map-${k}`).screenshot({ path: process.env.SHOTS + `/map-${k}.png` });
+  }
 });
