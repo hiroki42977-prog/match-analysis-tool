@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 
-export const APP = '/?fakeVideo=1';
+export const APP = './?fakeVideo=1';
 
 export async function setupTeamAndMatch(page: Page) {
   await page.goto(APP + '#/roster');
