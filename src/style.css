@@ -99,3 +99,14 @@ input.num { width: 96px; flex: none; }
 .pitch rect[data-lane] { cursor: pointer; }
 .panel { background: var(--surface); border: 2px solid var(--accent); border-radius: var(--radius); padding: 12px; margin-bottom: 12px; max-width: 640px; }
 .jump { border: 0; background: none; text-align: left; padding: 0; min-height: 44px; }
+
+/* 結果画面 */
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.stats { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: var(--radius); overflow: hidden; font-size: 15px; }
+.stats th, .stats td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.stats th:first-child { text-align: left; }
+.stats thead th { background: #eef1f4; color: var(--muted); font-weight: 600; }
+.stats tr.sec th { background: #f6f8fa; text-align: left; font-weight: 700; }
+.stats tr.total { font-weight: 700; }
+.results .seg { margin-bottom: 8px; }
+@media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
