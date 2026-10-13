@@ -34,3 +34,10 @@ test('csv has BOM, header, CRLF and quoting', () => {
   expect(csv.startsWith('﻿記録ID,')).toBe(true);
   expect(csv.split('\r\n')[1]).toBe('"a,b","say ""hi""",3,true');
 });
+
+import { readFileSync } from 'node:fs';
+
+test('Code.gs has the same log headers', () => {
+  const gs = readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8');
+  expect(gs).toContain(`['${LOG_HEADERS.join("', '")}']`);
+});
