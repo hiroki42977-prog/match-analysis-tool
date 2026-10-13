@@ -5,6 +5,7 @@ import { buildReports, dribbleArrows, passArrows } from '../../report/build';
 import { eventRow, eventsToCsv } from '../../report/rows';
 import * as db from '../../storage/db';
 import { h, svgEl } from '../dom';
+import { saveTextFile } from '../download';
 import { go } from '../router';
 
 const pct = (c: Count) => {
@@ -68,14 +69,14 @@ export async function resultsScreen(root: HTMLElement, params: Record<string, st
   const body = h('div', { class: 'results' });
   const reportMsg = h('p', { class: 'status', 'aria-live': 'polite' });
 
-  const csv = () => {
+  const csv = async () => {
     const rows = events.map((e) => eventRow(e, m, allPlayers.find((p) => p.id === e.playerId)!));
-    const url = URL.createObjectURL(new Blob([eventsToCsv(rows)], { type: 'text/csv' }));
-    const a = h('a', { href: url, download: `${m.date}_vs_${m.opponent}.csv` });
-    document.body.append(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    try {
+      await saveTextFile(eventsToCsv(rows), `${m.date}_vs_${m.opponent}.csv`, 'text/csv');
+    } catch (e) {
+      // 共有シートを閉じただけのときは何もしない
+      if (!(e instanceof DOMException && e.name === 'AbortError')) reportMsg.textContent = `CSV を保存できませんでした：${e}`;
+    }
   };
 
   const report = async () => {
@@ -124,7 +125,7 @@ export async function resultsScreen(root: HTMLElement, params: Record<string, st
       h('button', { onclick: () => go(`#/match/${m.id}`) }, '← 選手を選ぶ'),
       h('h1', {}, `結果　${m.date} vs ${m.opponent}`),
       h('span', { class: 'spacer' }),
-      h('button', { onclick: csv }, 'CSV 書き出し'),
+      h('button', { onclick: () => void csv() }, 'CSV 書き出し'),
       reportBtn),
     reportMsg,
     body,
