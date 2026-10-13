@@ -54,10 +54,16 @@ declare global {
 let apiReady: Promise<void> | null = null;
 function loadApi(): Promise<void> {
   if (window.YT?.Player) return Promise.resolve();
-  apiReady ??= new Promise((resolve) => {
+  apiReady ??= new Promise((resolve, reject) => {
     window.onYouTubeIframeAPIReady = () => resolve();
     const s = document.createElement('script');
     s.src = 'https://www.youtube.com/iframe_api';
+    // 読み込みに失敗したら、次に開いたときにもう一度試せるよう待ちを捨てる
+    s.onerror = () => {
+      apiReady = null;
+      s.remove();
+      reject(new Error('YouTube を読み込めませんでした'));
+    };
     document.head.appendChild(s);
   });
   return apiReady;
@@ -65,6 +71,8 @@ function loadApi(): Promise<void> {
 
 export async function createPlayer(el: HTMLElement, videoId: string, startSec: number): Promise<VideoPlayer> {
   if (location.search.includes('fakeVideo=1')) {
+    const delay = Number(new URLSearchParams(location.search).get('fakeDelay') ?? 0);
+    if (delay) await new Promise((r) => setTimeout(r, delay));
     el.textContent = 'テスト用の映像';
     return createFakePlayer(startSec);
   }

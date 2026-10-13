@@ -110,3 +110,5 @@ input.num { width: 96px; flex: none; }
 .stats tr.total { font-weight: 700; }
 .results .seg { margin-bottom: 8px; }
 @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+.play:disabled { opacity: .45; }
+.pitch.disabled { opacity: .5; }

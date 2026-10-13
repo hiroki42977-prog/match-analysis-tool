@@ -109,7 +109,15 @@ export async function recordScreen(root: HTMLElement, params: Record<string, str
   paintRecent();
   void paintStatus();
 
-  player = await createPlayer(videoBox, parseYouTubeId(m.videoUrl) ?? '', progress?.videoTimeSec ?? 0);
+  // 映像の準備ができるまでは押せなくする（準備前に押すと再生位置が 0:00 で保存されるため）
+  pad.setDisabled('映像の準備中…');
+  try {
+    player = await createPlayer(videoBox, parseYouTubeId(m.videoUrl) ?? '', progress?.videoTimeSec ?? 0);
+    pad.setDisabled(null);
+  } catch {
+    videoBox.textContent = '映像を読み込めませんでした';
+    pad.setDisabled('映像を読み込めませんでした。電波を確かめて、この画面を開き直してください');
+  }
   const playTimer = setInterval(paintPlay, 1000);
   const progressTimer = setInterval(() => void saveProgress(), 5000);
 

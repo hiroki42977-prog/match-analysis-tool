@@ -36,3 +36,23 @@ test('player with records cannot be removed from roster; CSV still works', async
   await page.getByRole('button', { name: '#7 佐藤 一郎 を消す' }).tap();
   await expect(page.getByText('#7 佐藤 一郎')).toHaveCount(0);
 });
+
+test('pad is disabled until the video is ready', async ({ page }) => {
+  await setupTeamAndMatch(page);
+  const url = page.url().replace('fakeVideo=1', 'fakeVideo=1&fakeDelay=2000');
+  await page.goto(url);
+  await page.getByRole('button', { name: /#10 山田 太郎/ }).click();
+  await expect(page.getByText('映像の準備中…')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'パス', exact: true })).toBeDisabled();
+  await expect(page.getByText('プレーを選んでください')).toBeVisible({ timeout: 5000 });
+  await expect(page.getByRole('button', { name: 'パス', exact: true })).toBeEnabled();
+});
+
+test('YouTube API load failure shows a message', async ({ page }) => {
+  await page.route('**/iframe_api', (r) => r.abort());
+  await setupTeamAndMatch(page);
+  await page.goto(page.url().replace('?fakeVideo=1', '?'));
+  await page.getByRole('button', { name: /#10 山田 太郎/ }).click();
+  await expect(page.locator('#video')).toHaveText('映像を読み込めませんでした', { timeout: 10_000 });
+  await expect(page.getByRole('button', { name: 'パス', exact: true })).toBeDisabled();
+});
