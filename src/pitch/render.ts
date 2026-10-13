@@ -2,7 +2,8 @@ import type { ZoneCell } from '../domain/stats';
 import type { Zone } from '../domain/types';
 import { PITCH, zoneCenter, zoneRect } from './geometry';
 
-export interface Arrow { from: Zone; to: Zone; style: 'solid' | 'dashed' | 'thick' }
+/** パスは細い矢印、ドリブルは太い矢印。成功は白い実線、失敗は赤い破線 */
+export interface Arrow { from: Zone; to: Zone; kind: 'pass' | 'dribble'; success: boolean }
 export interface PitchOptions { highlight?: Zone[]; heat?: ZoneCell[]; arrows?: Arrow[]; title?: string }
 
 // PNG 変換でもそのまま描けるよう、色はすべて属性で直接指定する
@@ -10,6 +11,9 @@ const GRASS = '#2f8f4e';
 const GRASS_STRIPE = '#349a54';
 const LINE = '#ffffff';
 const ARROW = '#ffffff';
+const ARROW_FAIL = '#ff4d4f';
+// 赤は芝の緑と明るさが近く見えにくいので、下に暗い縁取りを敷く
+const HALO = 'rgba(0,0,0,.45)';
 
 const f = (n: number) => +n.toFixed(2);
 
@@ -51,17 +55,25 @@ function arrowLayer(arrows: Arrow[]): string {
   return arrows.map((a) => {
     const p = zoneCenter(a.from);
     const q = zoneCenter(a.to);
-    const width = a.style === 'thick' ? 1.6 : 0.6;
+    const thick = a.kind === 'dribble';
+    const width = thick ? 1.6 : 0.6;
+    const color = a.success ? ARROW : ARROW_FAIL;
+    const dash = a.success ? '' : thick ? ' stroke-dasharray="2.4 1.4"' : ' stroke-dasharray="1.6 1.2"';
     if (a.from.lane === a.to.lane && a.from.col === a.to.col) {
-      return `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${a.style === 'thick' ? 2 : 1.4}" fill="none" stroke="${ARROW}" stroke-width="${width}" stroke-opacity=".75"${a.style === 'dashed' ? ' stroke-dasharray="1 .8"' : ''}/>`;
+      const r = thick ? 2 : 1.4;
+      const halo = a.success ? '' : `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${r}" fill="none" stroke="${HALO}" stroke-width="${f(width + .7)}"/>`;
+      return `${halo}<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${r}" fill="none" stroke="${color}" stroke-width="${width}" stroke-opacity=".9"${dash}/>`;
     }
     // 終点の少し手前で止めて矢じりを見せる
     const dx = q.x - p.x;
     const dy = q.y - p.y;
     const len = Math.hypot(dx, dy);
     const k = (len - 2) / len;
-    const marker = a.style === 'thick' ? 'url(#ah-thick)' : 'url(#ah)';
-    return `<line x1="${f(p.x)}" y1="${f(p.y)}" x2="${f(p.x + dx * k)}" y2="${f(p.y + dy * k)}" stroke="${ARROW}" stroke-width="${width}" stroke-opacity=".75" stroke-linecap="round"${a.style === 'dashed' ? ' stroke-dasharray="1.6 1.2"' : ''} marker-end="${marker}"/>`;
+    const x2 = f(p.x + dx * k);
+    const y2 = f(p.y + dy * k);
+    const marker = `url(#ah${thick ? '-thick' : ''}${a.success ? '' : '-red'})`;
+    const halo = a.success ? '' : `<line x1="${f(p.x)}" y1="${f(p.y)}" x2="${x2}" y2="${y2}" stroke="${HALO}" stroke-width="${f(width + .7)}" stroke-linecap="round"/>`;
+    return `${halo}<line x1="${f(p.x)}" y1="${f(p.y)}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${width}" stroke-opacity=".9" stroke-linecap="round"${dash} marker-end="${marker}"/>`;
   }).join('');
 }
 
@@ -79,7 +91,9 @@ export function pitchSvg(o: PitchOptions): string {
   const title = o.title ? `<text x="0" y="-1" font-size="3" fill="#ffffff">${o.title}</text>` : '';
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 113 76" font-family="-apple-system, 'Hiragino Sans', sans-serif">
 <defs><marker id="ah" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="${ARROW}"/></marker>
-<marker id="ah-thick" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="2.4" markerHeight="2.4" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="${ARROW}"/></marker></defs>
+<marker id="ah-thick" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="2.4" markerHeight="2.4" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="${ARROW}"/></marker>
+<marker id="ah-red" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="${ARROW_FAIL}" stroke="${HALO}" stroke-width=".6"/></marker>
+<marker id="ah-thick-red" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="2.4" markerHeight="2.4" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="${ARROW_FAIL}" stroke="${HALO}" stroke-width=".6"/></marker></defs>
 <rect x="-4" y="-4" width="113" height="76" rx="2" fill="${GRASS}"/>${markings()}${zoneLines()}
 ${o.heat ? heatLayer(o.heat) : ''}${o.arrows ? arrowLayer(o.arrows) : ''}${zones.join('')}${nums}
 <text x="104" y="-1" font-size="3" fill="rgba(255,255,255,.85)" text-anchor="end">攻める向き →</text>${title}</svg>`;

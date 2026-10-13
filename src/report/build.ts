@@ -24,11 +24,11 @@ export function reportNames(m: Match, p: Player, teamName: string): Pick<ReportP
 }
 
 export function passArrows(events: PlayEvent[]): Arrow[] {
-  return events.filter((e) => e.type === 'pass' && e.endZone).map((e) => ({ from: e.startZone, to: e.endZone!, style: e.success ? 'solid' : 'dashed' }));
+  return events.filter((e) => e.type === 'pass' && e.endZone).map((e) => ({ from: e.startZone, to: e.endZone!, kind: 'pass', success: e.success }));
 }
 
 export function dribbleArrows(events: PlayEvent[]): Arrow[] {
-  return events.filter((e) => e.type === 'dribble' && e.endZone).map((e) => ({ from: e.startZone, to: e.endZone!, style: 'thick' }));
+  return events.filter((e) => e.type === 'dribble' && e.endZone).map((e) => ({ from: e.startZone, to: e.endZone!, kind: 'dribble', success: e.success }));
 }
 
 /** その試合で記録がある選手全員分のレポートを、1人ずつ Apps Script に送る */
@@ -52,8 +52,8 @@ export async function buildReports(
     const mine = events.filter((e) => e.playerId === p.id);
     const title = `${name} ｜ ${m.date} vs ${m.opponent} ｜ ${m.format}人制`;
     const images: ReportImage[] = [
-      { label: 'パス（実線＝成功・破線＝失敗）', pngBase64: await svgToPngBase64(pitchSvg({ arrows: passArrows(mine) })) },
-      { label: 'ドリブル', pngBase64: await svgToPngBase64(pitchSvg({ arrows: dribbleArrows(mine) })) },
+      { label: 'パス（白い実線＝成功・赤い破線＝失敗）', pngBase64: await svgToPngBase64(pitchSvg({ arrows: passArrows(mine) })) },
+      { label: 'ドリブル（白＝成功・赤い破線＝失敗）', pngBase64: await svgToPngBase64(pitchSvg({ arrows: dribbleArrows(mine) })) },
       { label: '守備のヒートマップ', pngBase64: await svgToPngBase64(pitchSvg({ heat: zoneCells(mine, 'defense') })) },
       { label: 'シュートのヒートマップ', pngBase64: await svgToPngBase64(pitchSvg({ heat: zoneCells(mine, 'shot') })) },
     ];

@@ -24,13 +24,20 @@ test('30 tappable zone rects', () => {
   expect(count(pitchSvg({}), /<rect[^>]*data-lane=/g)).toBe(30);
 });
 
-test('arrows', () => {
+test('arrows: success white solid, failure red dashed', () => {
   const base = count(pitchSvg({}), /<circle/g);
-  const dashed = pitchSvg({ arrows: [{ from: { lane: 1, col: 1 }, to: { lane: 1, col: 3 }, style: 'dashed' }] });
-  expect(dashed).toContain('stroke-dasharray');
-  expect(dashed).toContain('marker-end');
-  const same = pitchSvg({ arrows: [{ from: { lane: 2, col: 2 }, to: { lane: 2, col: 2 }, style: 'solid' }] });
-  expect(count(same, /<circle/g)).toBe(base + 1);
+  const ok = pitchSvg({ arrows: [{ from: { lane: 1, col: 1 }, to: { lane: 1, col: 3 }, kind: 'pass', success: true }] });
+  expect(ok).toMatch(/<line[^>]*stroke="#ffffff"[^>]*marker-end="url\(#ah\)"/);
+  expect(ok).not.toMatch(/<line[^>]*stroke="#ff4d4f"/);
+  const ng = pitchSvg({ arrows: [{ from: { lane: 1, col: 1 }, to: { lane: 1, col: 3 }, kind: 'pass', success: false }] });
+  expect(ng).toMatch(/<line[^>]*stroke="#ff4d4f"[^>]*stroke-dasharray[^>]*marker-end="url\(#ah-red\)"/);
+  const dr = pitchSvg({ arrows: [{ from: { lane: 2, col: 1 }, to: { lane: 2, col: 4 }, kind: 'dribble', success: false }] });
+  expect(dr).toMatch(/<line[^>]*stroke="#ff4d4f"[^>]*stroke-width="1.6"[^>]*stroke-dasharray/);
+  const sameOk = pitchSvg({ arrows: [{ from: { lane: 2, col: 2 }, to: { lane: 2, col: 2 }, kind: 'pass', success: true }] });
+  expect(count(sameOk, /<circle/g)).toBe(base + 1);
+  const sameNg = pitchSvg({ arrows: [{ from: { lane: 2, col: 2 }, to: { lane: 2, col: 2 }, kind: 'pass', success: false }] });
+  expect(count(sameNg, /<circle/g)).toBe(base + 2); // 暗い縁取り＋赤い丸
+  expect(sameNg).toMatch(/<circle[^>]*stroke="#ff4d4f"/);
 });
 
 test('heat labels', () => {
