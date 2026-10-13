@@ -26,7 +26,7 @@ export async function rosterScreen(root: HTMLElement) {
     teams.length > 1
       ? h('div', { class: 'chips' }, ...teams.map((t) =>
         h('button', { class: t.id === currentTeamId ? 'on' : '', onclick: () => { currentTeamId = t.id; rerender(); } }, t.name)))
-      : null,
+      : '',
     h('div', { class: 'form-row' }, teamName, h('button', { onclick: addTeam }, 'チームを追加')),
   );
   if (!team) return;
