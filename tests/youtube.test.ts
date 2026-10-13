@@ -17,3 +17,26 @@ test('parseYouTubeId rejects others', () => {
     expect(parseYouTubeId(u), u).toBeNull();
   }
 });
+
+import { vi } from 'vitest';
+import { createFakePlayer } from '../src/video/youtube';
+
+test('fake player advances only while playing, honors seek and rate', () => {
+  let now = 0;
+  vi.spyOn(performance, 'now').mockImplementation(() => now);
+  const p = createFakePlayer(10);
+  expect(p.currentTime()).toBe(10);
+  p.play();
+  now = 2000;
+  expect(p.currentTime()).toBe(12);
+  p.setRate(2);
+  now = 3000;
+  expect(p.currentTime()).toBe(14);
+  p.pause();
+  now = 9000;
+  expect(p.currentTime()).toBe(14);
+  expect(p.isPlaying()).toBe(false);
+  p.seek(4);
+  expect(p.currentTime()).toBe(4);
+  vi.restoreAllMocks();
+});
