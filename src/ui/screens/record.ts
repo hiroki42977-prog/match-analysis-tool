@@ -35,7 +35,11 @@ export async function recordScreen(root: HTMLElement, params: Record<string, str
     paintRecent();
   }
 
+  // 取消の直後は、描き直しで同じ位置に出た次の「取消」を2度押しで消さないよう、少しの間押せなくする
+  let removeLockedUntil = 0;
   async function remove(e: PlayEvent) {
+    if (Date.now() < removeLockedUntil) return;
+    removeLockedUntil = Date.now() + 800;
     await db.deleteEvent(e.id);
     await queueDelete(e.id);
     requestFlush();
