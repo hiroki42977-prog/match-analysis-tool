@@ -9,11 +9,11 @@ beforeEach(async () => {
 });
 
 test('teams and players (sorted by number)', async () => {
-  await db.saveTeam({ id: 't1', name: '吹田南FC' });
+  await db.saveTeam({ id: 't1', name: 'サンプルFC' });
   await db.savePlayer({ id: 'p2', teamId: 't1', number: 10, name: '山田' });
   await db.savePlayer({ id: 'p1', teamId: 't1', number: 7, name: '佐藤' });
   await db.savePlayer({ id: 'p3', teamId: 't2', number: 1, name: '別' });
-  expect(await db.listTeams()).toEqual([{ id: 't1', name: '吹田南FC' }]);
+  expect(await db.listTeams()).toEqual([{ id: 't1', name: 'サンプルFC' }]);
   expect((await db.listPlayers('t1')).map((p) => p.number)).toEqual([7, 10]);
   await db.deletePlayer('p1');
   expect((await db.listPlayers('t1')).map((p) => p.id)).toEqual(['p2']);

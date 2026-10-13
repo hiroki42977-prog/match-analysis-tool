@@ -51,7 +51,7 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
   await expect(page.getByText('2人分のレポートを作りました')).toBeVisible({ timeout: 20_000 });
   const reports = bodies.filter((b) => b.action === 'buildReport') as Record<string, any>[];
   expect(reports).toHaveLength(2);
-  expect(reports.map((r) => r.playerFileName).sort()).toEqual(['#10 山田 太郎（吹田南FC）', '#7 佐藤 一郎（吹田南FC）']);
+  expect(reports.map((r) => r.playerFileName).sort()).toEqual(['#10 山田 太郎（サンプルFC）', '#7 佐藤 一郎（サンプルFC）']);
   for (const r of reports) {
     expect(r.images).toHaveLength(4);
     for (const img of r.images) expect(img.pngBase64.startsWith('iVBOR')).toBe(true);

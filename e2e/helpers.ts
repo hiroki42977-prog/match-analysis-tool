@@ -4,7 +4,7 @@ export const APP = '/?fakeVideo=1';
 
 export async function setupTeamAndMatch(page: Page) {
   await page.goto(APP + '#/roster');
-  await page.getByPlaceholder('チーム名').fill('吹田南FC');
+  await page.getByPlaceholder('チーム名').fill('サンプルFC');
   await page.getByRole('button', { name: 'チームを追加' }).click();
   for (const [num, name] of [['10', '山田 太郎'], ['7', '佐藤 一郎']]) {
     await page.getByPlaceholder('背番号').fill(num);

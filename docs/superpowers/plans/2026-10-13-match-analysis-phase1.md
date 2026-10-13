@@ -374,7 +374,7 @@ e2e/*.spec.ts                  Playwright（WebKit・iPad 横向き）
   - 設定: Apps Script の URL と合言葉。「送信テスト」ボタン（`postToScript(s, {action:'ping'})` の結果を「つながりました」／エラー文で表示）
   - ホーム: 試合の一覧（日付・相手・形式）、「新しい試合」、名簿・設定への入口。名簿が空なら「まず名簿を登録してください」
 - [ ] **Step 1: E2E の設定** `playwright.config.ts`: `projects: [{ name: 'ipad', use: { browserName: 'webkit', viewport: { width: 1180, height: 820 }, hasTouch: true, isMobile: true } }]`、`webServer: { command: 'npm run dev -- --port 5199', port: 5199 }`、`baseURL: 'http://localhost:5199/?fakeVideo=1'`
-- [ ] **Step 2: 失敗する E2E を書く** `e2e/setup.spec.ts`: 名簿でチーム「吹田南FC」と選手 #10 山田 太郎・#7 佐藤 一郎を登録 → 試合を登録（相手「テストFC」、8人制、`https://youtu.be/abcDEF12345`）→ 選手を選ぶ画面に2人が出る。不正なリンクではエラー文が出て保存されない。再読み込み後もホームに試合が残る
+- [ ] **Step 2: 失敗する E2E を書く** `e2e/setup.spec.ts`: 名簿でチーム「サンプルFC」と選手 #10 山田 太郎・#7 佐藤 一郎を登録 → 試合を登録（相手「テストFC」、8人制、`https://youtu.be/abcDEF12345`）→ 選手を選ぶ画面に2人が出る。不正なリンクではエラー文が出て保存されない。再読み込み後もホームに試合が残る
 - [ ] **Step 3:** `npm run e2e` → FAIL → **Step 4:** 実装 → **Step 5:** PASS、`npm test` も PASS
 - [ ] **Step 6: コミット** 「記録を始める前の準備（名簿・試合・設定）を1回の登録で済ませられるようにした」
 
@@ -426,7 +426,7 @@ e2e/*.spec.ts                  Playwright（WebKit・iPad 横向き）
   export interface ReportPayload { action: 'buildReport'; playerFileName: string; statsTabName: string; mapTabName: string;
     stats: StatsSheet; images: ReportImage[] }
   export function reportNames(m: Match, p: Player, teamName: string): Pick<ReportPayload, 'playerFileName' | 'statsTabName' | 'mapTabName'>;
-  // '#10 山田 太郎（吹田南FC）'、'10/13 vs テストFC スタッツ'、'10/13 vs テストFC マップ'
+  // '#10 山田 太郎（サンプルFC）'、'10/13 vs テストFC スタッツ'、'10/13 vs テストFC マップ'
   export function buildReports(matchId: string, onProgress: (done: number, total: number, name: string) => void): Promise<{ ok: number; failed: { name: string; error: string }[] }>;
   ```
   画像は4枚、この順とラベル: 「パス（実線＝成功・破線＝失敗）」「ドリブル」「守備のヒートマップ」「シュートのヒートマップ」。前半・後半を合わせた1試合分。記録が0件の選手は作らない。
