@@ -4,7 +4,7 @@ import type { PlayEvent, Zone } from './types';
 export type PlayButton = 'pass' | 'regate' | 'conduccion' | 'proteccion' | 'ball_recovery'
   | 'one_vs_one' | 'aerial' | 'onR' | 'onL' | 'offR' | 'offL';
 
-/** 設計書 5章の並び順（「失敗」ボタンは画面側で8番目に差し込む） */
+/** プレーの名前（記録一覧や表示で使う） */
 export const PLAY_BUTTONS: { id: PlayButton; label: string }[] = [
   { id: 'pass', label: 'パス' },
   { id: 'regate', label: 'レガーテ' },
@@ -19,12 +19,23 @@ export const PLAY_BUTTONS: { id: PlayButton; label: string }[] = [
   { id: 'offL', label: '枠外L' },
 ];
 
+/** 記録画面のボタン（4列）。シュート以外は ○＝成功・×＝失敗 の2つ。button が null は空きマス */
+export interface PadButton { button: PlayButton | null; failed: boolean; label: string }
+export const PAD_BUTTONS: PadButton[] = [
+  ...PLAY_BUTTONS.slice(0, 7).flatMap((b): PadButton[] => [
+    { button: b.id, failed: false, label: `${b.label} ○` },
+    { button: b.id, failed: true, label: `${b.label} ×` },
+  ]),
+  { button: null, failed: false, label: '' },
+  { button: null, failed: false, label: '' },
+  ...PLAY_BUTTONS.slice(7).map((b): PadButton => ({ button: b.id, failed: false, label: b.label })),
+];
+
 export interface FlowState { button: PlayButton | null; failed: boolean; start: Zone | null; timeSec: number | null }
 export const INITIAL_FLOW: FlowState = Object.freeze({ button: null, failed: false, start: null, timeSec: null }) as FlowState;
 
 export type FlowAction =
-  | { kind: 'play'; button: PlayButton; timeSec: number }
-  | { kind: 'toggleFail' }
+  | { kind: 'play'; button: PlayButton; failed: boolean; timeSec: number }
   | { kind: 'zone'; zone: Zone }
   | { kind: 'reset' };
 
@@ -60,12 +71,12 @@ export function step(s: FlowState, a: FlowAction): { state: FlowState; draft: Ev
   switch (a.kind) {
     case 'reset':
       return none(INITIAL_FLOW);
-    case 'play':
-      if (s.button === a.button) return none(INITIAL_FLOW);
-      return none({ button: a.button, failed: false, start: null, timeSec: a.timeSec });
-    case 'toggleFail':
-      if (!s.button || isShot(s.button)) return none(s);
-      return none({ ...s, failed: !s.failed });
+    case 'play': {
+      // シュートは押したボタンで成否が決まるので failed は使わない
+      const failed = isShot(a.button) ? false : a.failed;
+      if (s.button === a.button && s.failed === failed) return none(INITIAL_FLOW);
+      return none({ button: a.button, failed, start: null, timeSec: a.timeSec });
+    }
     case 'zone':
       if (!s.button) return none(s);
       if (needsEnd(s.button) && !s.start) return none({ ...s, start: a.zone });
@@ -76,8 +87,8 @@ export function step(s: FlowState, a: FlowAction): { state: FlowState; draft: Ev
 
 export function hint(s: FlowState): string {
   if (!s.button) return 'プレーを選んでください';
-  const name = label(s.button);
-  if (isShot(s.button)) return `${name} ― 打った場所を押してください`;
+  if (isShot(s.button)) return `${label(s.button)} ― 打った場所を押してください`;
+  const name = `${label(s.button)} ${s.failed ? '×' : '○'}`;
   if (!needsEnd(s.button)) return `${name} ― 場所を押してください`;
   return `${name} ― ${s.start ? '終点' : '始点'}ゾーンを押してください`;
 }

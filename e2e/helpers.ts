@@ -47,8 +47,11 @@ export async function openRecord(page: Page, player = '#10 山田 太郎') {
 
 export const zone = (page: Page, lane: number, col: number) => page.locator(`#pitch rect[data-lane="${lane}"][data-col="${col}"]`);
 
+const SHOTS = ['枠内R', '枠内L', '枠外R', '枠外L'];
+
+/** プレーのボタン（シュート以外は ○＝成功・×＝失敗）→ マスの順に押す */
 export async function record(page: Page, play: string, zones: [number, number][], fail = false) {
-  await page.getByRole('button', { name: play, exact: true }).tap();
-  if (fail) await page.getByRole('button', { name: '失敗', exact: true }).tap();
+  const name = SHOTS.includes(play) ? play : `${play} ${fail ? '×' : '○'}`;
+  await page.getByRole('button', { name, exact: true }).tap();
   for (const [l, c] of zones) await zone(page, l, c).tap();
 }

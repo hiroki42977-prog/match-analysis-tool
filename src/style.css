@@ -92,8 +92,12 @@ input.num { width: 96px; flex: none; }
 .pad { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; }
 .play-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .play { padding: 8px 4px; font-size: 15px; min-height: 52px; }
-.play.fail { color: var(--danger); border-color: var(--danger); }
-.play.fail.on { background: var(--danger); color: #fff; }
+.play { font-size: 14px; }
+.play.ok { color: var(--accent); border-color: var(--accent); }
+.play.ng { color: var(--danger); border-color: var(--danger); }
+.play.ok.on { background: var(--accent); color: #fff; }
+.play.ng.on { background: var(--danger); color: #fff; }
+.play.shot.on { background: var(--ink); border-color: var(--ink); color: #fff; }
 .hint { margin: 0; font-weight: 600; text-align: center; }
 .pitch svg { width: 100%; height: auto; display: block; border-radius: 8px; }
 .pitch rect[data-lane] { cursor: pointer; }

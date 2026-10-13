@@ -12,10 +12,10 @@ test('records pass, failed dribble, shot; fixes and undoes', async ({ page }) =>
   await openRecord(page);
   const recent = page.locator('#recent');
 
-  await page.getByRole('button', { name: 'パス', exact: true }).tap();
-  await expect(page.getByText('パス ― 始点ゾーンを押してください')).toBeVisible();
+  await page.getByRole('button', { name: 'パス ○', exact: true }).tap();
+  await expect(page.getByText('パス ○ ― 始点ゾーンを押してください')).toBeVisible();
   await zone(page, 3, 2).tap();
-  await expect(page.getByText('パス ― 終点ゾーンを押してください')).toBeVisible();
+  await expect(page.getByText('パス ○ ― 終点ゾーンを押してください')).toBeVisible();
   await zone(page, 3, 4).tap();
   await expect(recent.locator('li').first()).toContainText('パス(前) 成功');
 
@@ -26,7 +26,7 @@ test('records pass, failed dribble, shot; fixes and undoes', async ({ page }) =>
   await expect(page.getByText('この選手の記録 3件')).toBeVisible();
 
   // 最後のマスの2度押しは1件だけ
-  await page.getByRole('button', { name: '空中戦', exact: true }).tap();
+  await page.getByRole('button', { name: '空中戦 ○', exact: true }).tap();
   await zone(page, 2, 2).tap();
   await zone(page, 2, 2).tap();
   await expect(page.getByText('この選手の記録 4件')).toBeVisible();
@@ -52,7 +52,7 @@ test('reload keeps events and resumes position', async ({ page }) => {
   await openRecord(page);
   await page.getByRole('button', { name: '後半' }).tap();
   await record(page, 'ボール奪取', [[2, 2]]);
-  await page.getByRole('button', { name: 'パス', exact: true }).tap();
+  await page.getByRole('button', { name: 'パス ○', exact: true }).tap();
   await zone(page, 3, 3).tap();
   await page.reload();
   await expect(page.getByText('プレーを選んでください')).toBeVisible();

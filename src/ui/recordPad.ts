@@ -1,4 +1,4 @@
-import { hint, INITIAL_FLOW, PLAY_BUTTONS, step, type EventDraft, type FlowAction, type FlowState } from '../domain/recordFlow';
+import { hint, INITIAL_FLOW, PAD_BUTTONS, step, type EventDraft, type FlowAction, type FlowState } from '../domain/recordFlow';
 import { pitchSvg } from '../pitch/render';
 import { h, svgEl } from './dom';
 
@@ -8,16 +8,24 @@ export function recordPad(opts: { getTime: () => number; onDraft: (d: EventDraft
   let disabledMsg: string | null = null;
   const hintEl = h('p', { class: 'hint', 'aria-live': 'polite' });
   const pitch = h('div', { id: 'pitch', class: 'pitch' });
-  const playBtns = PLAY_BUTTONS.map((b) => h('button', { class: 'play', 'data-id': b.id, onclick: () => dispatch({ kind: 'play', button: b.id, timeSec: opts.getTime() }) }, b.label));
-  const failBtn = h('button', { class: 'play fail', onclick: () => dispatch({ kind: 'toggleFail' }) }, '失敗');
-  const buttons = [...playBtns.slice(0, 7), failBtn, ...playBtns.slice(7)];
+  const buttons = PAD_BUTTONS.map((b) => {
+    if (!b.button) return h('span', { class: 'play-gap', 'aria-hidden': 'true' });
+    const id = b.button;
+    const mark = b.label.endsWith('○') ? 'ok' : b.label.endsWith('×') ? 'ng' : 'shot';
+    return h('button', {
+      class: `play ${mark}`,
+      'data-id': id,
+      'data-failed': String(b.failed),
+      onclick: () => dispatch({ kind: 'play', button: id, failed: b.failed, timeSec: opts.getTime() }),
+    }, b.label);
+  });
+  const playBtns = buttons.filter((b): b is HTMLButtonElement => b instanceof HTMLButtonElement);
 
   function paint() {
     hintEl.textContent = disabledMsg ?? hint(state);
-    for (const b of buttons) b.toggleAttribute('disabled', disabledMsg !== null);
+    for (const b of playBtns) b.toggleAttribute('disabled', disabledMsg !== null);
     pitch.classList.toggle('disabled', disabledMsg !== null);
-    playBtns.forEach((b) => b.classList.toggle('on', b.dataset.id === state.button));
-    failBtn.classList.toggle('on', state.failed);
+    playBtns.forEach((b) => b.classList.toggle('on', b.dataset.id === state.button && b.dataset.failed === String(state.failed)));
     pitch.replaceChildren(svgEl(pitchSvg({ highlight: state.start ? [state.start] : [] })));
   }
 
