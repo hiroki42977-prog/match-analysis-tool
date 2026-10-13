@@ -83,3 +83,46 @@ test('overall map shows breakdown per zone', () => {
 test('highlight marks zone', () => {
   expect(pitchSvg({ highlight: [{ lane: 3, col: 3 }] })).toMatch(/data-lane="3" data-col="3"[^>]*class="zone on"/);
 });
+
+test('dribble start dot carries the subtype letter', () => {
+  const svg = pitchSvg({ arrows: [{ from: { lane: 2, col: 1 }, to: { lane: 2, col: 4 }, kind: 'dribble', success: true, tag: 'レ' }] });
+  expect(svg).toMatch(/<circle class="start"[^>]*r="1.7"/);
+  expect(svg).toMatch(/<text class="tag"[^>]*>レ<\/text>/);
+});
+
+test('marks: shape by kind, white = success / red = failure, spread inside the zone', () => {
+  const z = { lane: 2, col: 2 };
+  const svg = pitchSvg({ marks: [
+    { zone: z, shape: 'circle', success: true },
+    { zone: z, shape: 'triangle', success: false },
+    { zone: z, shape: 'square', success: true },
+    { zone: z, shape: 'diamond', success: false },
+  ] });
+  expect(count(svg, /class="mark"/g)).toBe(4);
+  expect(svg).toMatch(/<circle class="mark"[^>]*fill="#ffffff"/);
+  expect(svg).toMatch(/<polygon class="mark" data-shape="triangle"[^>]*fill="#ff4d4f"/);
+  expect(svg).toMatch(/<rect class="mark"[^>]*fill="#ffffff"/);
+  expect(svg).toMatch(/<polygon class="mark" data-shape="diamond"[^>]*fill="#ff4d4f"/);
+  const xs = [...svg.matchAll(/data-cx="([\d.]+)" data-cy="([\d.]+)"/g)].map((m) => `${m[1]},${m[2]}`);
+  expect(new Set(xs).size).toBe(4);
+  for (const p of xs) {
+    const [x, y] = p.split(',').map(Number);
+    expect(x).toBeGreaterThan(17.5);
+    expect(x).toBeLessThan(35);
+    expect(y).toBeGreaterThan(13.6);
+    expect(y).toBeLessThan(27.2);
+  }
+});
+
+test('overall labels have no white box, text is outlined instead', () => {
+  const overall: OverallCell[] = [{ lane: 2, col: 3, pass: 3, dribble: 2, defense: 1, count: 6, success: 4, rate: 4 / 6 }];
+  const svg = pitchSvg({ overall });
+  expect(svg).not.toContain('fill-opacity=".88"');
+  expect(count(svg, />パ3 ド2 守1<\/text>/g)).toBe(2); // ふち用と本体
+  expect(svg).toMatch(/<text[^>]*stroke="#ffffff"[^>]*>パ3 ド2 守1<\/text>/);
+});
+
+test('dribble that stays in one zone shows its letter inside the ring', () => {
+  const svg = pitchSvg({ arrows: [{ from: { lane: 4, col: 4 }, to: { lane: 4, col: 4 }, kind: 'dribble', success: true, tag: 'レ' }] });
+  expect(svg).toMatch(/<text class="tag"[^>]*>レ<\/text>/);
+});

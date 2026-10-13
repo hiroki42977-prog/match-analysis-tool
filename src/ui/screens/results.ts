@@ -1,7 +1,7 @@
 import { computeStats, overallCells, rate, zoneCells, type Count, type HalfStats } from '../../domain/stats';
 import type { PlayEvent, PlayType, Player } from '../../domain/types';
 import { pitchSvg } from '../../pitch/render';
-import { buildReports, dribbleArrows, OVERALL_LABEL, passArrows } from '../../report/build';
+import { buildReports, DEFENSE_LABEL, defenseMarks, DRIBBLE_LABEL, dribbleArrows, OVERALL_LABEL, passArrows, SHOT_LABEL, shotMarks } from '../../report/build';
 import { eventRow, eventsToCsv } from '../../report/rows';
 import * as db from '../../storage/db';
 import { h, svgEl } from '../dom';
@@ -110,11 +110,18 @@ export async function resultsScreen(root: HTMLElement, params: Record<string, st
           h('div', { id: 'overall', class: 'pitch' }, svgEl(pitchSvg({ overall: overallCells(mine), arrows: [...passArrows(mine), ...dribbleArrows(mine)] }))),
           h('h2', {}, 'ヒートマップ'),
           h('div', { id: 'heatmap-tabs', class: 'seg' }, ...HEAT_TABS.map((t) => h('button', { class: t.type === heatType ? 'on' : '', onclick: () => { heatType = t.type; paint(); } }, t.label))),
-          h('div', { id: 'heatmap', class: 'pitch' }, svgEl(pitchSvg({ heat: zoneCells(mine, heatType) }))),
+          // 守備とシュートは種類が分かる印、パスとドリブルはマスごとの本数
+          heatType === 'defense' || heatType === 'shot'
+            ? h('p', { class: 'muted' }, heatType === 'defense' ? DEFENSE_LABEL : SHOT_LABEL)
+            : '',
+          h('div', { id: 'heatmap', class: 'pitch' }, svgEl(pitchSvg(
+            heatType === 'defense' ? { marks: defenseMarks(mine) }
+              : heatType === 'shot' ? { marks: shotMarks(mine) }
+                : { heat: zoneCells(mine, heatType) }))),
           h('h2', {}, 'パス（白い実線＝成功・赤い破線＝失敗）'),
           h('div', { class: 'pitch' }, svgEl(pitchSvg({ arrows: passArrows(mine) }))),
-          h('h2', {}, 'ドリブル（波線。白＝成功・赤い破線＝失敗）'),
-          h('div', { class: 'pitch' }, svgEl(pitchSvg({ arrows: dribbleArrows(mine) }))),
+          h('h2', {}, DRIBBLE_LABEL),
+          h('div', { id: 'dribble-map', class: 'pitch' }, svgEl(pitchSvg({ arrows: dribbleArrows(mine) }))),
         ),
       ),
       h('h2', {}, 'チーム全体'),

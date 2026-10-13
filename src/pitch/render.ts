@@ -3,8 +3,11 @@ import type { Zone } from '../domain/types';
 import { PITCH, zoneCenter, zoneRect } from './geometry';
 
 /** パスはまっすぐな矢印、ドリブルは波線の矢印。成功は白、失敗は赤い破線。始点には●を付ける */
-export interface Arrow { from: Zone; to: Zone; kind: 'pass' | 'dribble'; success: boolean }
-export interface PitchOptions { highlight?: Zone[]; heat?: ZoneCell[]; overall?: OverallCell[]; arrows?: Arrow[]; title?: string }
+export interface Arrow { from: Zone; to: Zone; kind: 'pass' | 'dribble'; success: boolean; tag?: string }
+
+/** 守備・シュートの印。1プレー＝1つ。白＝成功、赤＝失敗 */
+export interface Mark { zone: Zone; shape: 'circle' | 'triangle' | 'square' | 'diamond'; success: boolean }
+export interface PitchOptions { highlight?: Zone[]; heat?: ZoneCell[]; overall?: OverallCell[]; arrows?: Arrow[]; marks?: Mark[]; title?: string }
 
 // PNG 変換でもそのまま描けるよう、色はすべて属性で直接指定する
 const GRASS = '#2f8f4e';
@@ -75,14 +78,52 @@ function overallShade(cells: OverallCell[]): string {
   return cells.filter((c) => c.count > 0).map((c) => shade(zoneRect(c), c.count, max)).join('');
 }
 
-/** 全体マップの内訳。矢印に隠れないよう、矢印の上に白い下地付きで出す */
+/** 白いふち付きの文字（ふち用を先に描き、本体を重ねる。paint-order は iPhone で崩れるため使わない） */
+function outlined(x: number, y: number, size: number, weight: string, text: string): string {
+  const base = `x="${f(x)}" y="${f(y)}" font-size="${size}" font-weight="${weight}"`;
+  return `<text ${base} fill="#ffffff" stroke="#ffffff" stroke-width=".8" stroke-linejoin="round">${text}</text><text ${base} fill="${INK}">${text}</text>`;
+}
+
+/** 全体マップの内訳。矢印に隠れないよう、矢印の上に白いふち付きの文字で出す */
 function overallLabels(cells: OverallCell[]): string {
   return cells.filter((c) => c.count > 0).map((c) => {
     const r = zoneRect(c);
-    return `<rect x="${f(r.x + .7)}" y="${f(r.y + .7)}" width="11.6" height="6.2" rx=".6" fill="#ffffff" fill-opacity=".88"/>`
-      + `<text x="${f(r.x + 1.2)}" y="${f(r.y + 3.3)}" font-size="2.4" font-weight="700" fill="${INK}">${c.count}本 ${pct(c.rate)}</text>`
-      + `<text x="${f(r.x + 1.2)}" y="${f(r.y + 6.1)}" font-size="2.2" fill="${INK}">パ${c.pass} ド${c.dribble} 守${c.defense}</text>`;
+    return outlined(r.x + 1.2, r.y + 3.3, 2.4, '700', `${c.count}本 ${pct(c.rate)}`)
+      + outlined(r.x + 1.2, r.y + 6.1, 2.2, '400', `パ${c.pass} ド${c.dribble} 守${c.defense}`);
   }).join('');
+}
+
+/** 印をマスの中に並べる位置（数に合わせて列と行を決める） */
+function markLayer(marks: Mark[]): string {
+  const groups = new Map<string, Mark[]>();
+  for (const m of marks) {
+    const k = `${m.zone.lane}-${m.zone.col}`;
+    groups.set(k, [...(groups.get(k) ?? []), m]);
+  }
+  const out: string[] = [];
+  for (const list of groups.values()) {
+    const r = zoneRect(list[0].zone);
+    const cols = Math.ceil(Math.sqrt(list.length * 1.3));
+    const rows = Math.ceil(list.length / cols);
+    const cw = (r.w - 2) / cols;
+    const ch = (r.h - 2) / rows;
+    const size = Math.min(1.6, cw * 0.32, ch * 0.32);
+    list.forEach((m, i) => {
+      const cx = r.x + 1 + cw * (i % cols + 0.5);
+      const cy = r.y + 1 + ch * (Math.floor(i / cols) + 0.5);
+      const fill = m.success ? '#ffffff' : ARROW_FAIL;
+      const attrs = `data-cx="${f(cx)}" data-cy="${f(cy)}" fill="${fill}" stroke="${HALO}" stroke-width=".4"`;
+      if (m.shape === 'circle') out.push(`<circle class="mark" cx="${f(cx)}" cy="${f(cy)}" r="${f(size)}" ${attrs}/>`);
+      else if (m.shape === 'square') out.push(`<rect class="mark" x="${f(cx - size * .9)}" y="${f(cy - size * .9)}" width="${f(size * 1.8)}" height="${f(size * 1.8)}" ${attrs}/>`);
+      else {
+        const pts = m.shape === 'triangle'
+          ? [[cx, cy - size * 1.15], [cx + size * 1.1, cy + size * .85], [cx - size * 1.1, cy + size * .85]]
+          : [[cx, cy - size * 1.25], [cx + size * 1.1, cy], [cx, cy + size * 1.25], [cx - size * 1.1, cy]];
+        out.push(`<polygon class="mark" data-shape="${m.shape}" points="${pts.map(([x, y]) => `${f(x)},${f(y)}`).join(' ')}" ${attrs}/>`);
+      }
+    });
+  }
+  return out.join('');
 }
 
 /** 同じマスから出る矢印を、マスの中で少しずつずらす量（始点・終点を同じだけ動かす） */
@@ -135,7 +176,10 @@ function arrowLayer(arrows: Arrow[]): { lines: string; dots: string } {
     if (a.from.lane === a.to.lane && a.from.col === a.to.col) {
       const r = dribble ? 2 : 1.4;
       const halo = a.success ? '' : `<circle cx="${f(c0.x)}" cy="${f(c0.y)}" r="${r}" fill="none" stroke="${HALO}" stroke-width="${f(width + .7)}"/>`;
-      return { line: `${halo}<circle cx="${f(c0.x)}" cy="${f(c0.y)}" r="${r}" fill="none" stroke="${color}" stroke-width="${width}" stroke-opacity=".9"${dash}/>`, dot: '' };
+      const ring = `${halo}<circle cx="${f(c0.x)}" cy="${f(c0.y)}" r="${r}" fill="none" stroke="${color}" stroke-width="${width}" stroke-opacity=".9"${dash}/>`;
+      // 同じマスの中のドリブルは、輪の中に頭文字を出す
+      const tag = a.tag ? `<text class="tag" x="${f(c0.x)}" y="${f(c0.y + .75)}" font-size="2.1" font-weight="700" fill="${color}" text-anchor="middle">${a.tag}</text>` : '';
+      return { line: ring, dot: tag };
     }
     const c1 = zoneCenter(a.to);
     const p = { x: c0.x + shift[i].dx, y: c0.y + shift[i].dy };
@@ -157,7 +201,10 @@ function arrowLayer(arrows: Arrow[]): { lines: string; dots: string } {
       body = `${halo}<line x1="${f(p.x)}" y1="${f(p.y)}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${width}" stroke-opacity=".9" stroke-linecap="round"${dash} marker-end="${marker}"/>`;
     }
     // 始点の●（重なっても、どこから出たか分かるように）
-    const dot = `<circle class="start" cx="${f(p.x)}" cy="${f(p.y)}" r="1" fill="${color}" stroke="${HALO}" stroke-width=".35"/>`;
+    const dot = a.tag
+      ? `<circle class="start" cx="${f(p.x)}" cy="${f(p.y)}" r="1.7" fill="${color}" stroke="${HALO}" stroke-width=".35"/>`
+        + `<text class="tag" x="${f(p.x)}" y="${f(p.y + .75)}" font-size="2.1" font-weight="700" fill="${a.success ? INK : '#ffffff'}" text-anchor="middle">${a.tag}</text>`
+      : `<circle class="start" cx="${f(p.x)}" cy="${f(p.y)}" r="1" fill="${color}" stroke="${HALO}" stroke-width=".35"/>`;
     return { line: body, dot };
   });
   return { lines: parts.map((x) => x.line).join(''), dots: parts.map((x) => x.dot).join('') };
@@ -180,6 +227,6 @@ export function pitchSvg(o: PitchOptions): string {
 <defs><marker id="ah" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="${ARROW}"/></marker>
 <marker id="ah-red" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="${ARROW_FAIL}" stroke="${HALO}" stroke-width=".6"/></marker></defs>
 <rect x="-4" y="-4" width="113" height="76" rx="2" fill="${GRASS}"/>${markings()}${zoneLines()}
-${o.heat ? heatLayer(o.heat) : ''}${o.overall ? overallShade(o.overall) : ''}${arrows.lines}${o.overall ? overallLabels(o.overall) : ''}${arrows.dots}${zones.join('')}${nums}
+${o.heat ? heatLayer(o.heat) : ''}${o.overall ? overallShade(o.overall) : ''}${arrows.lines}${o.overall ? overallLabels(o.overall) : ''}${arrows.dots}${o.marks ? markLayer(o.marks) : ''}${zones.join('')}${nums}
 <text x="104" y="-1" font-size="3" fill="rgba(255,255,255,.85)" text-anchor="end">攻める向き →</text>${title}</svg>`;
 }

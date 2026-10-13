@@ -35,7 +35,10 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
   // ヒートマップ: パスはゾーン(3,2)に3本
   await expect(page.locator('#heatmap')).toContainText('3本');
   await page.locator('#heatmap-tabs').getByRole('button', { name: '守備' }).tap();
-  await expect(page.locator('#heatmap')).toContainText('1本');
+  await expect(page.locator('#heatmap .mark')).toHaveCount(1);
+  await page.locator('#heatmap-tabs').getByRole('button', { name: 'シュート' }).tap();
+  await expect(page.locator('#heatmap .mark')).toHaveCount(1);
+  await expect(page.locator('#dribble-map .tag')).toHaveText(['コ']);
 
   // 全体マップ: ゾーン(3,2)にパス3本、(2,2)にドリブル1本＋守備1本
   await expect(page.locator('#overall')).toContainText('パ3 ド0 守0');
