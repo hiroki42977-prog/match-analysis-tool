@@ -37,8 +37,9 @@ function heatLayer(cells: ZoneCell[]): string {
   const max = Math.max(0, ...cells.map((c) => c.count));
   return cells.filter((c) => c.count > 0).map((c) => {
     const r = zoneRect(c);
-    const a = 0.15 + 0.7 * (c.count / max);
-    const ink = a > 0.5 ? '#0b3d1f' : '#ffffff';
+    // 一番少ないマスでも文字が読める濃さにし、文字色は常に濃い緑
+    const a = 0.4 + 0.5 * (c.count / max);
+    const ink = '#0b3d1f';
     const pct = c.rate === null ? '-' : `${Math.round(c.rate * 100)}%`;
     return `<rect x="${f(r.x + .4)}" y="${f(r.y + .4)}" width="${f(r.w - .8)}" height="${f(r.h - .8)}" rx=".8" fill="#ffffff" fill-opacity="${f(a)}"/>`
       + `<text x="${f(r.x + r.w / 2)}" y="${f(r.y + r.h / 2 - .6)}" font-size="3.6" font-weight="700" fill="${ink}" text-anchor="middle">${c.count}本</text>`

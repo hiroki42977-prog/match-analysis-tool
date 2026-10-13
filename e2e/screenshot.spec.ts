@@ -11,3 +11,18 @@ test('screenshot: record screen', async ({ page }) => {
   await page.locator('#pitch rect[data-lane="3"][data-col="3"]').tap();
   await page.screenshot({ path: process.env.SHOTS + '/record.png' });
 });
+
+test('screenshot: results screen', async ({ page }) => {
+  test.skip(!process.env.SHOTS, 'SHOTS=1 のときだけ撮る');
+  await setupTeamAndMatch(page);
+  await openRecord(page);
+  await record(page, 'パス', [[3, 2], [3, 4]]);
+  await record(page, 'パス', [[3, 2], [2, 3]]);
+  await record(page, 'パス', [[3, 3], [2, 1]], true);
+  await record(page, 'コンドゥクシオン', [[2, 2], [2, 4]]);
+  await record(page, 'レガーテ', [[4, 4], [4, 4]]);
+  await record(page, 'ボール奪取', [[2, 2]]);
+  await page.getByRole('button', { name: '結果を見る' }).tap();
+  await page.locator('.chips').getByRole('button', { name: '#10 山田 太郎' }).tap();
+  await page.screenshot({ path: process.env.SHOTS + '/results.png', fullPage: true });
+});
