@@ -70,3 +70,9 @@ export async function removeOp(seq: number) { await (await db()).delete('queue',
 
 export async function getSettings(): Promise<Settings | undefined> { return (await db()).get('settings', 'main'); }
 export async function saveSettings(s: Settings) { await (await db()).put('settings', s, 'main'); }
+
+/** すべての試合を通した、その選手の記録の数 */
+export async function countPlayerEvents(playerId: string): Promise<number> {
+  const all: PlayEvent[] = await (await db()).getAll('events');
+  return all.filter((e) => e.playerId === playerId).length;
+}

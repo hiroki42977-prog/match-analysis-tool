@@ -60,3 +60,11 @@ test('settings', async () => {
   await db.saveSettings({ endpoint: 'https://x', token: 'k' });
   expect(await db.getSettings()).toEqual({ endpoint: 'https://x', token: 'k' });
 });
+
+test('countPlayerEvents across matches', async () => {
+  await db.saveEvent(ev({ id: 'y1', matchId: 'a', playerId: 'p9' }));
+  await db.saveEvent(ev({ id: 'y2', matchId: 'b', playerId: 'p9' }));
+  await db.saveEvent(ev({ id: 'y3', matchId: 'b', playerId: 'p8' }));
+  expect(await db.countPlayerEvents('p9')).toBe(2);
+  expect(await db.countPlayerEvents('none')).toBe(0);
+});

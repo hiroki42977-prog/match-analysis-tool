@@ -58,7 +58,14 @@ export async function rosterScreen(root: HTMLElement) {
       h('button', {
         class: 'danger',
         'aria-label': `#${p.number} ${p.name} を消す`,
-        onclick: async () => { if (confirm(`#${p.number} ${p.name} を名簿から消しますか？`)) { await db.deletePlayer(p.id); rerender(); } },
+        onclick: async () => {
+          // 記録が残っている選手を消すと、結果・CSV・レポートが作れなくなるため消させない
+          if (await db.countPlayerEvents(p.id)) {
+            alert(`記録がある選手は名簿から消せません（#${p.number} ${p.name}）`);
+            return;
+          }
+          if (confirm(`#${p.number} ${p.name} を名簿から消しますか？`)) { await db.deletePlayer(p.id); rerender(); }
+        },
       }, '消す'),
     ))),
   );
