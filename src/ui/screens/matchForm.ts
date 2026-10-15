@@ -1,4 +1,5 @@
-import { newId, type Match } from '../../domain/types';
+import { HALF_LABEL } from '../../domain/labels';
+import { newId, type Half, type Match, type MatchVideo } from '../../domain/types';
 import * as db from '../../storage/db';
 import { parseYouTubeId } from '../../video/youtube';
 import { h, today } from '../dom';
@@ -13,7 +14,40 @@ export async function matchFormScreen(root: HTMLElement, params: Record<string, 
 
   const date = h('input', { type: 'date', value: m.date }) as HTMLInputElement;
   const opponent = h('input', { value: m.opponent }) as HTMLInputElement;
-  const url = h('input', { value: m.videos[0].url, inputmode: 'url', placeholder: 'https://youtu.be/...' }) as HTMLInputElement;
+  const recorded = existing ? await db.listEvents(m.id) : [];
+  // 1試合が複数のリンクに分かれて届くことがあるため、リンクを何本でも足せて、1本ずつ前半・後半を選ぶ
+  let videos: MatchVideo[] = m.videos.map((v) => ({ ...v }));
+  const videosBox = h('div', { class: 'videos' });
+  const paintVideos = () => {
+    videosBox.replaceChildren(...videos.map((v, i) => {
+      const halfBtns = (['1H', '2H'] as Half[]).map((x) => h('button', {
+        type: 'button',
+        class: x === v.half ? 'on' : '',
+        onclick: () => { v.half = x; paintVideos(); },
+      }, HALF_LABEL[x]));
+      return h('div', { class: 'video-row' },
+        h('input', {
+          value: v.url, inputmode: 'url', placeholder: 'https://youtu.be/...', 'aria-label': `YouTube のリンク ${'①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳'[i] ?? i + 1}`,
+          oninput: (ev: Event) => { v.url = (ev.target as HTMLInputElement).value; },
+        }),
+        h('div', { class: 'seg' }, ...halfBtns),
+        videos.length > 1 ? h('button', {
+          type: 'button',
+          class: 'danger',
+          onclick: () => {
+            const n = recorded.filter((e) => e.videoId === v.id).length;
+            if (n > 0 && !confirm(`このリンクで記録した${n}件が映像に飛べなくなります。消しますか？`)) return;
+            videos = videos.filter((x) => x !== v);
+            paintVideos();
+          },
+        }, '消す') : null);
+    }));
+  };
+  paintVideos();
+  const addVideoBtn = h('button', {
+    type: 'button',
+    onclick: () => { videos.push({ id: newId(), url: '', half: videos[videos.length - 1]?.half ?? '1H' }); paintVideos(); },
+  }, '＋ リンクを足す');
   const msg = h('p', { class: 'error' });
   let format = m.format;
   const formatBtns = (['11', '8'] as const).map((f) => h('button', {
@@ -35,10 +69,10 @@ export async function matchFormScreen(root: HTMLElement, params: Record<string, 
 
   const save = async () => {
     if (!opponent.value.trim()) { msg.textContent = '対戦相手を入れてください'; return; }
-    if (!parseYouTubeId(url.value)) { msg.textContent = 'YouTube のリンクを貼ってください'; return; }
+    if (videos.some((v) => !parseYouTubeId(v.url))) { msg.textContent = 'YouTube のリンクを貼ってください'; return; }
     const playerIds = [...playersBox.querySelectorAll<HTMLInputElement>('input:checked')].map((i) => i.value);
     if (playerIds.length === 0) { msg.textContent = '出場選手を1人以上選んでください'; return; }
-    await db.saveMatch({ ...m, teamId: teamSel.value, date: date.value || today(), opponent: opponent.value.trim(), format, videos: [{ ...m.videos[0], url: url.value.trim() }, ...m.videos.slice(1)], playerIds });
+    await db.saveMatch({ ...m, teamId: teamSel.value, date: date.value || today(), opponent: opponent.value.trim(), format, videos: videos.map((v) => ({ ...v, url: v.url.trim() })), playerIds });
     go(`#/match/${m.id}`);
   };
 
@@ -49,7 +83,7 @@ export async function matchFormScreen(root: HTMLElement, params: Record<string, 
       h('label', {}, '日付', date),
       h('label', {}, '対戦相手', opponent),
       h('div', { class: 'field' }, h('span', {}, '形式'), h('div', { class: 'seg' }, ...formatBtns)),
-      h('label', {}, 'YouTube のリンク', url),
+      h('div', { class: 'field' }, h('span', {}, 'YouTube のリンク'), videosBox, addVideoBtn),
       h('div', { class: 'field' }, h('span', {}, '出場選手'), playersBox),
       msg,
       h('button', { class: 'primary big', onclick: save }, '保存'),

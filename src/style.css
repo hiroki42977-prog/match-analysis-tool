@@ -57,6 +57,10 @@ input.num { width: 96px; flex: none; }
 .form-row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
 .form-row input { flex: 1; }
 .seg { display: flex; gap: 8px; }
+.videos { display: flex; flex-direction: column; gap: 8px; }
+.video-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.video-row input { flex: 1 1 260px; }
+.video-row .seg { flex: 0 0 auto; }
 .seg button { flex: 1; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }

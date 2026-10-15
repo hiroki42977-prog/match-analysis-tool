@@ -15,7 +15,25 @@ export async function setupTeamAndMatch(page: Page) {
   await page.goto(APP + '#/match/new');
   await page.getByLabel('対戦相手').fill('テストFC');
   await page.getByRole('button', { name: '8人制' }).click();
-  await page.getByLabel('YouTube のリンク').fill('https://youtu.be/abcDEF12345');
+  await page.getByLabel('YouTube のリンク ①').fill('https://youtu.be/abcDEF12345');
+  await page.getByRole('button', { name: '保存' }).click();
+  await expect(page.getByRole('button', { name: /#10 山田 太郎/ })).toBeVisible();
+}
+
+/** 試合の登録画面で、リンクの行を1本足して入れる */
+export async function addVideo(page: Page, url: string, half: '前半' | '後半') {
+  await page.getByRole('button', { name: '＋ リンクを足す' }).click();
+  const row = page.locator('.video-row').last();
+  await row.getByRole('textbox').fill(url);
+  await row.getByRole('button', { name: half, exact: true }).click();
+}
+
+/** 試合を3本のリンク（①前半 ②前半 ③後半）で作り直す。選手選びの画面で終わる */
+export async function setupThreeVideoMatch(page: Page) {
+  await setupTeamAndMatch(page);
+  await page.getByRole('button', { name: '試合を直す' }).click();
+  await addVideo(page, 'https://youtu.be/bbbBBB22222', '前半');
+  await addVideo(page, 'https://youtu.be/cccCCC33333', '後半');
   await page.getByRole('button', { name: '保存' }).click();
   await expect(page.getByRole('button', { name: /#10 山田 太郎/ })).toBeVisible();
 }
