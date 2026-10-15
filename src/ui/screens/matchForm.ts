@@ -8,12 +8,12 @@ export async function matchFormScreen(root: HTMLElement, params: Record<string, 
   const teams = await db.listTeams();
   if (teams.length === 0) return go('#/roster');
   const existing = params.id ? await db.getMatch(params.id) : undefined;
-  const m: Match = existing ?? { id: newId(), teamId: teams[0].id, date: today(), opponent: '', format: '11', videoUrl: '', playerIds: [] };
+  const m: Match = existing ?? { id: newId(), teamId: teams[0].id, date: today(), opponent: '', format: '11', videos: [{ id: newId(), url: '', half: '1H' }], playerIds: [] };
   const isNew = !existing;
 
   const date = h('input', { type: 'date', value: m.date }) as HTMLInputElement;
   const opponent = h('input', { value: m.opponent }) as HTMLInputElement;
-  const url = h('input', { value: m.videoUrl, inputmode: 'url', placeholder: 'https://youtu.be/...' }) as HTMLInputElement;
+  const url = h('input', { value: m.videos[0].url, inputmode: 'url', placeholder: 'https://youtu.be/...' }) as HTMLInputElement;
   const msg = h('p', { class: 'error' });
   let format = m.format;
   const formatBtns = (['11', '8'] as const).map((f) => h('button', {
@@ -38,7 +38,7 @@ export async function matchFormScreen(root: HTMLElement, params: Record<string, 
     if (!parseYouTubeId(url.value)) { msg.textContent = 'YouTube のリンクを貼ってください'; return; }
     const playerIds = [...playersBox.querySelectorAll<HTMLInputElement>('input:checked')].map((i) => i.value);
     if (playerIds.length === 0) { msg.textContent = '出場選手を1人以上選んでください'; return; }
-    await db.saveMatch({ ...m, teamId: teamSel.value, date: date.value || today(), opponent: opponent.value.trim(), format, videoUrl: url.value.trim(), playerIds });
+    await db.saveMatch({ ...m, teamId: teamSel.value, date: date.value || today(), opponent: opponent.value.trim(), format, videos: [{ ...m.videos[0], url: url.value.trim() }, ...m.videos.slice(1)], playerIds });
     go(`#/match/${m.id}`);
   };
 

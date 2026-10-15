@@ -3,7 +3,7 @@ import { eventRow, eventsToCsv, LOG_HEADERS, videoLink } from '../src/report/row
 import type { Match, Player } from '../src/domain/types';
 import { ev } from './helpers';
 
-const match: Match = { id: 'm1', teamId: 't1', date: '2026-10-13', opponent: 'テストFC', format: '8', videoUrl: 'https://youtu.be/abcDEF12345', playerIds: ['p1'] };
+const match: Match = { id: 'm1', teamId: 't1', date: '2026-10-13', opponent: 'テストFC', format: '8', videos: [{ id: 'v1', url: 'https://youtu.be/abcDEF12345', half: '1H' }, { id: 'v2', url: 'https://youtu.be/zzzZZZ99999', half: '2H' }], playerIds: ['p1'] };
 const player: Player = { id: 'p1', teamId: 't1', number: 10, name: '山田 太郎' };
 
 test('headers are the 19 spec columns', () => {
@@ -23,6 +23,11 @@ test('eventRow for shot', () => {
   const r = eventRow(e, match, player);
   expect(r.slice(7, 11)).toEqual(['シュート', '枠外', 'L', '失敗']);
   expect(r.slice(13, 16)).toEqual(['', '', '']);
+});
+
+test('video link column uses the video the event was recorded on', () => {
+  expect(eventRow(ev({ videoId: 'v2', videoTimeSec: 30 }), match, player)[17]).toBe('https://www.youtube.com/watch?v=zzzZZZ99999&t=30s');
+  expect(eventRow(ev({ videoTimeSec: 30 }), match, player)[17]).toBe('https://www.youtube.com/watch?v=abcDEF12345&t=30s');
 });
 
 test('videoLink floors seconds', () => {

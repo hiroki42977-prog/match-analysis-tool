@@ -1,4 +1,5 @@
 import { openDB, type IDBPDatabase } from 'idb';
+import { upgradeMatch, type LegacyMatch } from '../domain/videos';
 import type { Match, PlayEvent, Player, PlayerProgress, Settings, Team } from '../domain/types';
 
 export interface QueuedOp {
@@ -43,10 +44,19 @@ export async function listPlayers(teamId: string): Promise<Player[]> {
 }
 
 export async function saveMatch(m: Match) { await (await db()).put('matches', m); }
-export async function getMatch(id: string): Promise<Match | undefined> { return (await db()).get('matches', id); }
+/** 古い形の試合は読んだときに今の形へ直し、保存し直す */
+async function upgraded(m: LegacyMatch): Promise<Match> {
+  const r = upgradeMatch(m);
+  if (r.changed) await saveMatch(r.match);
+  return r.match;
+}
+export async function getMatch(id: string): Promise<Match | undefined> {
+  const m: LegacyMatch | undefined = await (await db()).get('matches', id);
+  return m && upgraded(m);
+}
 export async function listMatches(): Promise<Match[]> {
-  const all: Match[] = await (await db()).getAll('matches');
-  return all.sort((a, b) => b.date.localeCompare(a.date));
+  const all: LegacyMatch[] = await (await db()).getAll('matches');
+  return (await Promise.all(all.map(upgraded))).sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export async function saveEvent(e: PlayEvent) { await (await db()).put('events', e); }

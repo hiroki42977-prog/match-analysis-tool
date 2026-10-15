@@ -1,6 +1,7 @@
 import { passDirection } from '../../domain/direction';
 import type { EventDraft } from '../../domain/recordFlow';
 import { newId, type Half, type PassSub, type PlayEvent } from '../../domain/types';
+import { videoOf } from '../../domain/videos';
 import { eventRow } from '../../report/rows';
 import * as db from '../../storage/db';
 import { pendingCount, queueDelete, queueUpsert, requestFlush } from '../../sync/queue';
@@ -112,7 +113,7 @@ export async function recordScreen(root: HTMLElement, params: Record<string, str
   // 映像の準備ができるまでは押せなくする（準備前に押すと再生位置が 0:00 で保存されるため）
   pad.setDisabled('映像の準備中…');
   try {
-    player = await createPlayer(videoBox, parseYouTubeId(m.videoUrl) ?? '', progress?.videoTimeSec ?? 0);
+    player = await createPlayer(videoBox, parseYouTubeId(videoOf(m).url) ?? '', progress?.videoTimeSec ?? 0);
     pad.setDisabled(null);
   } catch {
     videoBox.textContent = '映像を読み込めませんでした';

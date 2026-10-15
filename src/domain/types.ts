@@ -10,13 +10,15 @@ export type Foot = 'R' | 'L';
 
 export interface Team { id: string; name: string }
 export interface Player { id: string; teamId: string; number: number; name: string }
+/** 試合の映像。1試合が複数のリンクに分かれて届くことがあるため、リンクごとに前半・後半を持つ */
+export interface MatchVideo { id: string; url: string; half: Half }
 export interface Match {
   id: string;
   teamId: string;
   date: string; // YYYY-MM-DD
   opponent: string;
   format: '11' | '8';
-  videoUrl: string;
+  videos: MatchVideo[];
   playerIds: string[];
 }
 export interface PlayEvent {
@@ -31,10 +33,12 @@ export interface PlayEvent {
   startZone: Zone;
   endZone: Zone | null;
   passDirectionOverride: PassSub | null;
+  /** 記録したリンク。無いとき（前からの記録）は1本目 */
+  videoId?: string;
   videoTimeSec: number;
   createdAt: string; // ISO
 }
-export interface PlayerProgress { matchId: string; playerId: string; videoTimeSec: number; half: Half }
+export interface PlayerProgress { matchId: string; playerId: string; videoId?: string; videoTimeSec: number; half: Half }
 export interface Settings { endpoint: string; token: string }
 
 export function newId(): string {

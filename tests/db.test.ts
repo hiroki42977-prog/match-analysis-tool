@@ -20,11 +20,20 @@ test('teams and players (sorted by number)', async () => {
 });
 
 test('matches newest first', async () => {
-  const m = (id: string, date: string) => ({ id, teamId: 't1', date, opponent: 'X', format: '8' as const, videoUrl: '', playerIds: [] });
+  const m = (id: string, date: string) => ({ id, teamId: 't1', date, opponent: 'X', format: '8' as const, videos: [{ id: 'v1', url: 'https://youtu.be/abcDEF12345', half: '1H' as const }], playerIds: [] });
   await db.saveMatch(m('a', '2026-09-01'));
   await db.saveMatch(m('b', '2026-10-13'));
   expect((await db.listMatches()).map((x) => x.id)).toEqual(['b', 'a']);
   expect((await db.getMatch('a'))?.date).toBe('2026-09-01');
+});
+
+test('old match (videoUrl only) is upgraded once and saved', async () => {
+  await db.saveMatch({ id: 'old', teamId: 't1', date: '2026-10-01', opponent: 'X', format: '8', videoUrl: 'https://youtu.be/abcDEF12345', playerIds: [] } as never);
+  const first = await db.getMatch('old');
+  expect(first?.videos).toHaveLength(1);
+  expect(first?.videos[0].url).toBe('https://youtu.be/abcDEF12345');
+  expect((await db.getMatch('old'))?.videos[0].id).toBe(first?.videos[0].id);
+  expect((await db.listMatches())[0].videos[0].id).toBe(first?.videos[0].id);
 });
 
 test('events filtered by match/player, ordered 1H→2H then time', async () => {

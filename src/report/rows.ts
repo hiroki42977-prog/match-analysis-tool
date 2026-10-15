@@ -1,6 +1,7 @@
 import { effectivePassDirection } from '../domain/direction';
 import { HALF_LABEL, SUBTYPE_LABEL, TYPE_LABEL } from '../domain/labels';
 import type { Match, PlayEvent, Player } from '../domain/types';
+import { videoOf } from '../domain/videos';
 import { parseYouTubeId } from '../video/youtube';
 
 export type RowValue = string | number | boolean;
@@ -19,7 +20,7 @@ export function eventRow(e: PlayEvent, m: Match, p: Player): RowValue[] {
     TYPE_LABEL[e.type], SUBTYPE_LABEL[kind], e.foot ?? '', e.success ? '成功' : '失敗',
     e.startZone.lane, e.startZone.col, e.endZone?.lane ?? '', e.endZone?.col ?? '',
     e.passDirectionOverride ? SUBTYPE_LABEL[e.passDirectionOverride] : '',
-    e.videoTimeSec, videoLink(m.videoUrl, e.videoTimeSec), e.createdAt,
+    e.videoTimeSec, videoLink(videoOf(m, e.videoId).url, e.videoTimeSec), e.createdAt,
   ];
 }
 
