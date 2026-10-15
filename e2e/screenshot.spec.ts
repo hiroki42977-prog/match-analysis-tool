@@ -46,7 +46,8 @@ test('screenshot: results screen', async ({ page }) => {
   for (const k of ['overall-1H', 'pass', 'dribble-1H', 'defense', 'shot']) {
     await page.locator(`#map-${k}`).screenshot({ path: process.env.SHOTS + `/map-${k}.png` });
   }
-  const [pdf] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'PDF 書き出し' }).tap()]);
+  await page.getByRole('button', { name: 'PDF 書き出し' }).tap();
+  const [pdf] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'PDF を保存' }).tap()]);
   copyFileSync((await pdf.path())!, process.env.SHOTS + '/figures.pdf');
 });
 

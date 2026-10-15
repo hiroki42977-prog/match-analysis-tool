@@ -63,7 +63,9 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
   expect(csv.trim().split('\r\n')).toHaveLength(8);
 
   // PDF（今選んでいる選手1人分の図7枚）
-  const [pdf] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'PDF 書き出し' }).tap()]);
+  // iPad では共有はボタンを押した直後にしか開けないため、作るボタンと保存するボタンを分ける
+  await page.getByRole('button', { name: 'PDF 書き出し' }).tap();
+  const [pdf] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'PDF を保存' }).tap()]);
   expect(pdf.suggestedFilename()).toMatch(/_vs_.*\.pdf$/);
   const pdfText = readFileSync((await pdf.path())!, 'latin1');
   expect(pdfText.startsWith('%PDF')).toBe(true);

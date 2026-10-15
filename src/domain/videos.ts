@@ -23,3 +23,8 @@ export function videoLabel(m: Match, v: MatchVideo): string {
   const i = m.videos.indexOf(v);
   return `${NUM[i] ?? `(${i + 1})`}${HALF_LABEL[v.half]}`;
 }
+
+/** そのリンクで扱われる記録の数（リンクを持たない記録や、消されたリンクの記録は1本目に数える） */
+export function countOnVideo(m: Match, events: { videoId?: string }[], videoId: string): number {
+  return events.filter((e) => videoOf(m, e.videoId).id === videoId).length;
+}

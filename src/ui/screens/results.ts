@@ -94,7 +94,8 @@ export async function resultsScreen(root: HTMLElement, params: Record<string, st
   };
   const reportBtn = h('button', { class: 'primary', onclick: () => void report() }, 'レポート作成');
 
-  // 今選んでいる選手1人分の図を、1ページ1枚の PDF にする
+  // 今選んでいる選手1人分の図を、1ページ1枚の PDF にする。
+  // iPad では共有シートはボタンを押した直後にしか開けないので、作り終わったら「PDF を保存」を押してもらう
   const pdf = async () => {
     const p = players.find((x) => x.id === current);
     if (!p) return;
@@ -102,11 +103,16 @@ export async function resultsScreen(root: HTMLElement, params: Record<string, st
     reportMsg.textContent = 'PDF を作成中…';
     try {
       const blob = await buildFiguresPdf(mapFigures(events.filter((e) => e.playerId === p.id)), pageHeading(m, p));
-      reportMsg.textContent = '';
-      await saveFile(blob, pdfFileName(m, p), 'application/pdf');
+      const name = pdfFileName(m, p);
+      const save = h('button', { class: 'primary', onclick: () => {
+        saveFile(blob, name, 'application/pdf').catch((e) => {
+          // 共有シートを閉じただけのときは何もしない
+          if (!(e instanceof DOMException && e.name === 'AbortError')) reportMsg.textContent = `PDF を保存できませんでした：${e}`;
+        });
+      } }, 'PDF を保存');
+      reportMsg.replaceChildren(`${name} ができました　`, save);
     } catch (e) {
-      // 共有シートを閉じただけのときは何もしない
-      if (!(e instanceof DOMException && e.name === 'AbortError')) reportMsg.textContent = `PDF を作れませんでした：${e instanceof Error ? e.message : e}`;
+      reportMsg.textContent = `PDF を作れませんでした：${e instanceof Error ? e.message : e}`;
     } finally {
       pdfBtn.removeAttribute('disabled');
     }

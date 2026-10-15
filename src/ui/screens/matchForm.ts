@@ -1,6 +1,7 @@
 import { HALF_LABEL } from '../../domain/labels';
 import { newId, type Half, type Match, type MatchVideo } from '../../domain/types';
 import * as db from '../../storage/db';
+import { countOnVideo } from '../../domain/videos';
 import { parseYouTubeId } from '../../video/youtube';
 import { h, today } from '../dom';
 import { go } from '../router';
@@ -35,8 +36,8 @@ export async function matchFormScreen(root: HTMLElement, params: Record<string, 
           type: 'button',
           class: 'danger',
           onclick: () => {
-            const n = recorded.filter((e) => e.videoId === v.id).length;
-            if (n > 0 && !confirm(`このリンクで記録した${n}件が映像に飛べなくなります。消しますか？`)) return;
+            const n = countOnVideo({ ...m, videos }, recorded, v.id);
+            if (n > 0 && !confirm(`このリンクで記録した${n}件は、一番上のリンクの映像として扱われ、場面がずれます。消しますか？`)) return;
             videos = videos.filter((x) => x !== v);
             paintVideos();
           },

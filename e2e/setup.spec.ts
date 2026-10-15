@@ -89,11 +89,32 @@ test('removing a link with records asks first and keeps the records', async ({ p
   let message = '';
   page.once('dialog', (dlg) => { message = dlg.message(); void dlg.dismiss(); });
   await page.locator('.video-row').nth(1).getByRole('button', { name: '消す' }).click();
-  expect(message).toBe('このリンクで記録した1件が映像に飛べなくなります。消しますか？');
+  expect(message).toBe('このリンクで記録した1件は、一番上のリンクの映像として扱われ、場面がずれます。消しますか？');
   await expect(page.locator('.video-row')).toHaveCount(3);
   page.once('dialog', (dlg) => void dlg.accept());
   await page.locator('.video-row').nth(1).getByRole('button', { name: '消す' }).click();
   await expect(page.locator('.video-row')).toHaveCount(2);
   await page.getByRole('button', { name: '保存' }).click();
   await expect(page.getByRole('button', { name: /#10 山田 太郎/ })).toContainText('記録 1件');
+});
+
+test('removing the first link of an old match asks about records without a link', async ({ page }) => {
+  await setupTeamAndMatch(page);
+  const matchId = page.url().split('#/match/')[1];
+  await page.evaluate(async (id) => {
+    const req = indexedDB.open('match-analysis');
+    const d: IDBDatabase = await new Promise((ok) => { req.onsuccess = () => ok(req.result); });
+    await new Promise((ok) => {
+      const t = d.transaction('events', 'readwrite');
+      t.objectStore('events').put({ id: 'ev-old', matchId: id, half: '1H', playerId: 'x', type: 'shot', subtype: 'on_target', foot: 'R', success: true,
+        startZone: { lane: 3, col: 6 }, endZone: null, passDirectionOverride: null, videoTimeSec: 12, createdAt: new Date().toISOString() });
+      t.oncomplete = ok;
+    });
+  }, matchId);
+  await page.getByRole('button', { name: '試合を直す' }).click();
+  await addVideo(page, 'https://youtu.be/bbbBBB22222', '前半');
+  let message = '';
+  page.once('dialog', (dlg) => { message = dlg.message(); void dlg.dismiss(); });
+  await page.locator('.video-row').nth(0).getByRole('button', { name: '消す' }).click();
+  expect(message).toContain('1件');
 });

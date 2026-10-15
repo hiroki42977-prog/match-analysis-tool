@@ -33,3 +33,11 @@ test('videoOf falls back to the first video', () => {
 test('videoLabel numbers videos with their half', () => {
   expect(three.videos.map((v) => videoLabel(three, v))).toEqual(['①前半', '②前半', '③後半']);
 });
+
+test('countOnVideo counts events that end up on that video, including ones without a videoId', async () => {
+  const { countOnVideo } = await import('../src/domain/videos');
+  const evs = [{ videoId: undefined }, { videoId: 'v1' }, { videoId: '消えたID' }, { videoId: 'v2' }];
+  expect(countOnVideo(three, evs, 'v1')).toBe(3);
+  expect(countOnVideo(three, evs, 'v2')).toBe(1);
+  expect(countOnVideo(three, evs, 'v3')).toBe(0);
+});
