@@ -1,5 +1,6 @@
 import { test } from '@playwright/test';
-import { openRecord, record, setupTeamAndMatch } from './helpers';
+import { copyFileSync } from 'node:fs';
+import { openRecord, record, setupTeamAndMatch, setupThreeVideoMatch } from './helpers';
 
 test('screenshot: record screen', async ({ page }) => {
   test.skip(!process.env.SHOTS, 'SHOTS=1 のときだけ撮る');
@@ -45,4 +46,17 @@ test('screenshot: results screen', async ({ page }) => {
   for (const k of ['overall-1H', 'pass', 'dribble-1H', 'defense', 'shot']) {
     await page.locator(`#map-${k}`).screenshot({ path: process.env.SHOTS + `/map-${k}.png` });
   }
+  const [pdf] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'PDF 書き出し' }).tap()]);
+  copyFileSync((await pdf.path())!, process.env.SHOTS + '/figures.pdf');
+});
+
+test('screenshot: several links (form and record screen)', async ({ page }) => {
+  test.skip(!process.env.SHOTS, 'SHOTS=1 のときだけ撮る');
+  await setupThreeVideoMatch(page);
+  await page.getByRole('button', { name: '試合を直す' }).click();
+  await page.screenshot({ path: process.env.SHOTS + '/form-videos.png', fullPage: true });
+  await page.getByRole('button', { name: '← 戻る' }).click();
+  await openRecord(page);
+  await page.locator('#video-tabs').getByRole('button', { name: '③後半' }).tap();
+  await page.screenshot({ path: process.env.SHOTS + '/record-videos.png' });
 });
