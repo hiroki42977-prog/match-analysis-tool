@@ -62,6 +62,13 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
   expect(csv.startsWith('﻿記録ID,試合日,対戦相手')).toBe(true);
   expect(csv.trim().split('\r\n')).toHaveLength(8);
 
+  // PDF（今選んでいる選手1人分の図7枚）
+  const [pdf] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'PDF 書き出し' }).tap()]);
+  expect(pdf.suggestedFilename()).toMatch(/_vs_.*\.pdf$/);
+  const pdfText = readFileSync((await pdf.path())!, 'latin1');
+  expect(pdfText.startsWith('%PDF')).toBe(true);
+  expect(pdfText.match(/\/Type \/Page[^s]/g)).toHaveLength(7);
+
   // レポート作成
   await page.getByRole('button', { name: 'レポート作成' }).tap();
   await expect(page.getByText('2人分のレポートを作りました')).toBeVisible({ timeout: 20_000 });

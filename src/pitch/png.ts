@@ -1,5 +1,5 @@
-/** SVG 文字列を PNG にして base64（"data:" より後ろ）で返す。ブラウザ専用 */
-export async function svgToPngBase64(svg: string, widthPx = 1050): Promise<string> {
+/** SVG 文字列をキャンバスの指定の場所に描く。ブラウザ専用 */
+export async function drawSvg(ctx: CanvasRenderingContext2D, svg: string, x: number, y: number, w: number, h: number): Promise<void> {
   const img = new Image();
   const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
   try {
@@ -8,12 +8,17 @@ export async function svgToPngBase64(svg: string, widthPx = 1050): Promise<strin
       img.onerror = () => ng(new Error('図を画像にできませんでした'));
       img.src = url;
     });
-    const canvas = document.createElement('canvas');
-    canvas.width = widthPx;
-    canvas.height = Math.round(widthPx * 76 / 113);
-    canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/png').split(',')[1];
+    ctx.drawImage(img, x, y, w, h);
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+/** SVG 文字列を PNG にして base64（"data:" より後ろ）で返す。ブラウザ専用 */
+export async function svgToPngBase64(svg: string, widthPx = 1050): Promise<string> {
+  const canvas = document.createElement('canvas');
+  canvas.width = widthPx;
+  canvas.height = Math.round(widthPx * 76 / 113);
+  await drawSvg(canvas.getContext('2d')!, svg, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/png').split(',')[1];
 }

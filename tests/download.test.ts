@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { saveTextFile } from '../src/ui/download';
+import { saveFile } from '../src/ui/download';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -7,7 +7,7 @@ test('uses the share sheet in home-screen mode when files can be shared', async 
   const share = vi.fn(async () => {});
   vi.stubGlobal('navigator', { standalone: true, canShare: () => true, share });
   vi.stubGlobal('matchMedia', () => ({ matches: false }));
-  const how = await saveTextFile('a,b', 'x.csv', 'text/csv');
+  const how = await saveFile('a,b', 'x.csv', 'text/csv');
   expect(how).toBe('share');
   expect((share.mock.calls[0] as unknown as [{ files: File[] }])[0].files[0].name).toBe('x.csv');
 });
@@ -21,7 +21,7 @@ test('falls back to a download link otherwise', async () => {
     body: { append() {} },
   });
   vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:x', revokeObjectURL() {} }));
-  expect(await saveTextFile('a,b', 'x.csv', 'text/csv')).toBe('download');
+  expect(await saveFile('a,b', 'x.csv', 'text/csv')).toBe('download');
   expect(click).toHaveBeenCalled();
 });
 

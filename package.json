@@ -11,7 +11,8 @@
     "check": "vitest run && playwright test"
   },
   "dependencies": {
-    "idb": "^8.0.4"
+    "idb": "^8.0.4",
+    "jspdf": "^4.2.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",

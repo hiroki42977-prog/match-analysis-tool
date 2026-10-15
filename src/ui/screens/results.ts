@@ -2,10 +2,11 @@ import { computeStats, rate, zoneCells, type Count, type HalfStats } from '../..
 import type { PlayEvent, PlayType, Player } from '../../domain/types';
 import { pitchSvg } from '../../pitch/render';
 import { buildReports, mapFigures } from '../../report/build';
+import { pageHeading, pdfFileName, buildFiguresPdf } from '../../report/pdf';
 import { eventRow, eventsToCsv } from '../../report/rows';
 import * as db from '../../storage/db';
 import { h, svgEl } from '../dom';
-import { saveTextFile } from '../download';
+import { saveFile } from '../download';
 import { go } from '../router';
 
 const pct = (c: Count) => {
@@ -70,7 +71,7 @@ export async function resultsScreen(root: HTMLElement, params: Record<string, st
   const csv = async () => {
     const rows = events.map((e) => eventRow(e, m, allPlayers.find((p) => p.id === e.playerId)!));
     try {
-      await saveTextFile(eventsToCsv(rows), `${m.date}_vs_${m.opponent}.csv`, 'text/csv');
+      await saveFile(eventsToCsv(rows), `${m.date}_vs_${m.opponent}.csv`, 'text/csv');
     } catch (e) {
       // 共有シートを閉じただけのときは何もしない
       if (!(e instanceof DOMException && e.name === 'AbortError')) reportMsg.textContent = `CSV を保存できませんでした：${e}`;
@@ -92,6 +93,25 @@ export async function resultsScreen(root: HTMLElement, params: Record<string, st
     }
   };
   const reportBtn = h('button', { class: 'primary', onclick: () => void report() }, 'レポート作成');
+
+  // 今選んでいる選手1人分の図を、1ページ1枚の PDF にする
+  const pdf = async () => {
+    const p = players.find((x) => x.id === current);
+    if (!p) return;
+    pdfBtn.setAttribute('disabled', '');
+    reportMsg.textContent = 'PDF を作成中…';
+    try {
+      const blob = await buildFiguresPdf(mapFigures(events.filter((e) => e.playerId === p.id)), pageHeading(m, p));
+      reportMsg.textContent = '';
+      await saveFile(blob, pdfFileName(m, p), 'application/pdf');
+    } catch (e) {
+      // 共有シートを閉じただけのときは何もしない
+      if (!(e instanceof DOMException && e.name === 'AbortError')) reportMsg.textContent = `PDF を作れませんでした：${e instanceof Error ? e.message : e}`;
+    } finally {
+      pdfBtn.removeAttribute('disabled');
+    }
+  };
+  const pdfBtn = h('button', { onclick: () => void pdf() }, 'PDF 書き出し');
 
   function paint() {
     if (!current) {
@@ -127,6 +147,7 @@ export async function resultsScreen(root: HTMLElement, params: Record<string, st
       h('h1', {}, `結果　${m.date} vs ${m.opponent}`),
       h('span', { class: 'spacer' }),
       h('button', { onclick: () => void csv() }, 'CSV 書き出し'),
+      pdfBtn,
       reportBtn),
     reportMsg,
     body,
