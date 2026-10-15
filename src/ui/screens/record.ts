@@ -1,7 +1,7 @@
 import { passDirection } from '../../domain/direction';
 import type { EventDraft } from '../../domain/recordFlow';
-import { newId, type Half, type PassSub, type PlayEvent } from '../../domain/types';
-import { videoOf } from '../../domain/videos';
+import { newId, type Half, type MatchVideo, type PassSub, type PlayEvent } from '../../domain/types';
+import { videoLabel, videoOf } from '../../domain/videos';
 import { eventRow } from '../../report/rows';
 import * as db from '../../storage/db';
 import { pendingCount, queueDelete, queueUpsert, requestFlush } from '../../sync/queue';
@@ -16,7 +16,10 @@ export async function recordScreen(root: HTMLElement, params: Record<string, str
   const p = (await db.listPlayers(m?.teamId ?? '')).find((x) => x.id === params.playerId);
   if (!m || !p) return go('#/');
   const progress = await db.getProgress(m.id, p.id);
-  let half: Half = progress?.half ?? '1H';
+  let video = videoOf(m, progress?.videoId);
+  // 進み具合が消されたリンクを指していたときは、1本目の最初から（リンクを持たない前からの進み具合は1本目のもの）
+  const resume = progress && (!progress.videoId || progress.videoId === video.id) ? progress : undefined;
+  let half: Half = resume?.half ?? video.half;
   let events = await db.listEvents(m.id, p.id);
 
   const videoBox = h('div', { id: 'video', class: 'video' });
@@ -26,7 +29,7 @@ export async function recordScreen(root: HTMLElement, params: Record<string, str
   let player: VideoPlayer | null = null;
   const time = () => player?.currentTime() ?? 0;
 
-  const saveProgress = () => db.saveProgress({ matchId: m.id, playerId: p.id, videoTimeSec: time(), half });
+  const saveProgress = () => db.saveProgress({ matchId: m.id, playerId: p.id, videoId: video.id, videoTimeSec: time(), half });
 
   async function persist(e: PlayEvent) {
     await db.saveEvent(e);
@@ -77,20 +80,38 @@ export async function recordScreen(root: HTMLElement, params: Record<string, str
 
   const pad = recordPad({
     getTime: time,
-    onDraft: (d: EventDraft) => void persist({ ...d, id: newId(), matchId: m.id, playerId: p.id, half, passDirectionOverride: null, createdAt: new Date().toISOString() }),
+    onDraft: (d: EventDraft) => void persist({ ...d, id: newId(), matchId: m.id, playerId: p.id, half, videoId: video.id, passDirectionOverride: null, createdAt: new Date().toISOString() }),
   });
 
   const playBtn = h('button', { onclick: () => { if (!player) return; if (player.isPlaying()) player.pause(); else player.play(); paintPlay(); } }, '▶');
   const paintPlay = () => { playBtn.textContent = player?.isPlaying() ? '❚❚' : '▶'; };
   let rateIdx = 0;
   const rateBtn = h('button', { onclick: () => { rateIdx = (rateIdx + 1) % RATES.length; player?.setRate(RATES[rateIdx]); rateBtn.textContent = `${RATES[rateIdx]}倍`; } }, '1倍');
+  const setHalf = (x: Half) => { half = x; halfBtns.forEach((b, i) => b.classList.toggle('on', ['1H', '2H'][i] === x)); };
   const halfBtns = (['1H', '2H'] as Half[]).map((x) => h('button', {
     class: x === half ? 'on' : '',
-    onclick: () => { half = x; halfBtns.forEach((b, i) => b.classList.toggle('on', ['1H', '2H'][i] === x)); void saveProgress(); },
+    onclick: () => { setHalf(x); void saveProgress(); },
   }, x === '1H' ? '前半' : '後半'));
+
+  // 1試合が複数リンクのとき、映像を切り替えるボタン。前半・後半もそのリンクに合わせる
+  const videoTabs = m.videos.length > 1 ? h('div', { id: 'video-tabs', class: 'seg video-tabs' }) : null;
+  const paintTabs = () => videoTabs?.replaceChildren(...m.videos.map((v) => h('button', {
+    class: v.id === video.id ? 'on' : '',
+    onclick: () => void switchVideo(v),
+  }, videoLabel(m, v))));
+  async function switchVideo(v: MatchVideo) {
+    if (v.id === video.id) return;
+    await saveProgress();
+    video = v;
+    setHalf(v.half);
+    paintTabs();
+    await loadVideo(0);
+    void saveProgress();
+  }
 
   root.append(h('div', { class: 'rec' },
     h('div', { class: 'rec-left' },
+      videoTabs,
       videoBox,
       h('div', { class: 'controls' },
         h('button', { onclick: () => player?.seek(time() - 10) }, '◀ 10秒'), playBtn, rateBtn, ...halfBtns),
@@ -111,14 +132,26 @@ export async function recordScreen(root: HTMLElement, params: Record<string, str
   void paintStatus();
 
   // 映像の準備ができるまでは押せなくする（準備前に押すと再生位置が 0:00 で保存されるため）
-  pad.setDisabled('映像の準備中…');
-  try {
-    player = await createPlayer(videoBox, parseYouTubeId(videoOf(m).url) ?? '', progress?.videoTimeSec ?? 0);
-    pad.setDisabled(null);
-  } catch {
-    videoBox.textContent = '映像を読み込めませんでした';
-    pad.setDisabled('映像を読み込めませんでした。電波を確かめて、この画面を開き直してください');
+  let loading = 0;
+  async function loadVideo(startSec: number) {
+    const mine = ++loading;
+    pad.setDisabled('映像の準備中…');
+    player?.destroy();
+    player = null;
+    try {
+      const next = await createPlayer(videoBox, parseYouTubeId(video.url) ?? '', startSec);
+      // 準備中に別のリンクへ切り替えられたら、古いほうは捨てる
+      if (mine !== loading) { next.destroy(); return; }
+      player = next;
+      pad.setDisabled(null);
+    } catch {
+      if (mine !== loading) return;
+      videoBox.textContent = '映像を読み込めませんでした';
+      pad.setDisabled('映像を読み込めませんでした。電波を確かめて、この画面を開き直してください');
+    }
   }
+  paintTabs();
+  await loadVideo(resume?.videoTimeSec ?? 0);
   const playTimer = setInterval(paintPlay, 1000);
   const progressTimer = setInterval(() => void saveProgress(), 5000);
 

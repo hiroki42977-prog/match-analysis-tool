@@ -61,6 +61,8 @@ input.num { width: 96px; flex: none; }
 .video-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .video-row input { flex: 1 1 260px; }
 .video-row .seg { flex: 0 0 auto; }
+.video-tabs { margin-bottom: 8px; flex-wrap: wrap; }
+.video-tabs button { flex: 0 1 auto; }
 .seg button { flex: 1; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }

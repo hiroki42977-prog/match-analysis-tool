@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { fakeScript, openRecord, record, saveSettings, setupTeamAndMatch, zone } from './helpers';
+import { APP, fakeScript, openRecord, record, saveSettings, setupTeamAndMatch, setupThreeVideoMatch, zone } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   page.on('dialog', (d) => void d.accept());
@@ -99,4 +99,79 @@ test('event list: jump, edit, delete', async ({ page }) => {
 
   await rows.nth(0).locator('.jump').tap();
   await expect(page.getByText('プレーを選んでください')).toBeVisible();
+});
+
+const tab = (page: import('@playwright/test').Page, name: string) => page.locator('#video-tabs').getByRole('button', { name, exact: true });
+const halfBtn = (page: import('@playwright/test').Page, name: '前半' | '後半') => page.locator('.controls').getByRole('button', { name, exact: true });
+
+test('one link: no video tabs', async ({ page }) => {
+  await setupTeamAndMatch(page);
+  await openRecord(page);
+  await expect(page.locator('#video-tabs')).toHaveCount(0);
+});
+
+test('switching to a second-half link sets the half and is remembered', async ({ page }) => {
+  await setupThreeVideoMatch(page);
+  await openRecord(page);
+  await expect(page.locator('#video-tabs button')).toHaveText(['①前半', '②前半', '③後半']);
+  await expect(tab(page, '①前半')).toHaveClass(/on/);
+  await tab(page, '③後半').tap();
+  await expect(tab(page, '③後半')).toHaveClass(/on/);
+  await expect(halfBtn(page, '後半')).toHaveClass(/on/);
+  await expect(page.getByText('映像の準備中…')).toHaveCount(0);
+  await record(page, 'パス', [[3, 2], [3, 4]]);
+  await expect(page.getByText('この選手の記録 1件')).toBeVisible();
+  await page.getByRole('button', { name: '記録一覧' }).tap();
+  await expect(page.locator('#events li').first()).toContainText('後半');
+  await page.getByRole('button', { name: '← 記録画面' }).tap();
+  await expect(tab(page, '③後半')).toHaveClass(/on/);
+});
+
+test('jumping from the list opens the link the event was recorded on', async ({ page }) => {
+  await setupThreeVideoMatch(page);
+  await openRecord(page);
+  await tab(page, '②前半').tap();
+  await expect(page.getByText('映像の準備中…')).toHaveCount(0);
+  await record(page, '枠内R', [[3, 6]]);
+  await tab(page, '③後半').tap();
+  await expect(tab(page, '③後半')).toHaveClass(/on/);
+  await page.getByRole('button', { name: '記録一覧' }).tap();
+  await page.locator('#events li').first().getByRole('button').first().tap();
+  await expect(tab(page, '②前半')).toHaveClass(/on/);
+  await expect(halfBtn(page, '前半')).toHaveClass(/on/);
+});
+
+test('progress on a removed link starts from the first link', async ({ page }) => {
+  await setupThreeVideoMatch(page);
+  await openRecord(page);
+  await tab(page, '③後半').tap();
+  await expect(tab(page, '③後半')).toHaveClass(/on/);
+  await page.getByRole('button', { name: '選手を変える' }).tap();
+  await page.getByRole('button', { name: '試合を直す' }).click();
+  await page.locator('.video-row').nth(2).getByRole('button', { name: '消す' }).click();
+  await page.getByRole('button', { name: '保存' }).click();
+  await openRecord(page);
+  await expect(page.locator('#video-tabs button')).toHaveText(['①前半', '②前半']);
+  await expect(tab(page, '①前半')).toHaveClass(/on/);
+});
+
+test('a match saved in the old form (one videoUrl) still records', async ({ page }) => {
+  await setupTeamAndMatch(page);
+  const matchId = page.url().split('#/match/')[1];
+  await page.evaluate(async (id) => {
+    const req = indexedDB.open('match-analysis');
+    const d: IDBDatabase = await new Promise((ok) => { req.onsuccess = () => ok(req.result); });
+    const store = () => d.transaction('matches', 'readwrite').objectStore('matches');
+    const m: Record<string, unknown> & { videos: { url: string }[] } = await new Promise((ok) => {
+      const g = store().get(id);
+      g.onsuccess = () => ok(g.result);
+    });
+    const { videos, ...rest } = m;
+    await new Promise((ok) => { store().put({ ...rest, videoUrl: videos[0].url }).onsuccess = ok; });
+  }, matchId);
+  await page.goto(APP + `#/match/${matchId}`);
+  await openRecord(page);
+  await expect(page.locator('#video-tabs')).toHaveCount(0);
+  await record(page, 'パス', [[3, 2], [3, 4]]);
+  await expect(page.getByText('この選手の記録 1件')).toBeVisible();
 });
