@@ -21,7 +21,10 @@ export async function eventListScreen(root: HTMLElement, params: Record<string, 
     listEl.replaceChildren(...events.map((e) => h('li', { class: 'row' },
       h('button', {
         class: 'jump grow',
-        onclick: async () => { await db.saveProgress({ matchId: m!.id, playerId: p!.id, videoId: e.videoId, videoTimeSec: e.videoTimeSec, half: e.half }); go(`#/match/${m!.id}/record/${p!.id}`); },
+        onclick: async () => {
+          // ほかのリンクの「どこまで見たか」は残す
+          const prev = await db.getProgress(m!.id, p!.id);
+          await db.saveProgress({ matchId: m!.id, playerId: p!.id, videoId: e.videoId, videoTimeSec: e.videoTimeSec, half: e.half, positions: prev?.positions }); go(`#/match/${m!.id}/record/${p!.id}`); },
       }, h('span', { class: 'time' }, `${HALF_LABEL[e.half]} ${formatTime(e.videoTimeSec)}`), ` ${playText(e)}　`, h('small', { class: 'muted' }, placeText(e))),
       h('button', { onclick: () => edit(e) }, '直す'),
       h('button', {

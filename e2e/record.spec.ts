@@ -175,3 +175,24 @@ test('a match saved in the old form (one videoUrl) still records', async ({ page
   await record(page, 'パス', [[3, 2], [3, 4]]);
   await expect(page.getByText('この選手の記録 1件')).toBeVisible();
 });
+
+test('switching back to a link continues from where it was', async ({ page }) => {
+  await setupThreeVideoMatch(page);
+  await openRecord(page);
+  await expect(page.getByText('映像の準備中…')).toHaveCount(0);
+  // ①を少し進めて止める
+  await page.getByRole('button', { name: '▶' }).tap();
+  await page.waitForTimeout(2500);
+  await page.getByRole('button', { name: '❚❚' }).tap();
+  await tab(page, '②前半').tap();
+  await expect(page.getByText('映像の準備中…')).toHaveCount(0);
+  await record(page, '枠内R', [[3, 6]]);
+  await expect(page.locator('#recent li').first().locator('.time')).toHaveText('0:00');
+  // 画面を出て入り直しても、①は続きから
+  await page.getByRole('button', { name: '選手を変える' }).tap();
+  await openRecord(page);
+  await tab(page, '①前半').tap();
+  await expect(page.getByText('映像の準備中…')).toHaveCount(0);
+  await record(page, '枠内L', [[3, 6]]);
+  await expect(page.locator('#recent li').first().locator('.time')).not.toHaveText('0:00');
+});

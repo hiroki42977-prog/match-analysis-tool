@@ -20,6 +20,8 @@ export async function recordScreen(root: HTMLElement, params: Record<string, str
   // 進み具合が消されたリンクを指していたときは、1本目の最初から（リンクを持たない前からの進み具合は1本目のもの）
   const resume = progress && (!progress.videoId || progress.videoId === video.id) ? progress : undefined;
   let half: Half = resume?.half ?? video.half;
+  const positions: Record<string, number> = { ...progress?.positions };
+  if (resume) positions[video.id] = resume.videoTimeSec;
   let events = await db.listEvents(m.id, p.id);
 
   const videoBox = h('div', { id: 'video', class: 'video' });
@@ -29,7 +31,11 @@ export async function recordScreen(root: HTMLElement, params: Record<string, str
   let player: VideoPlayer | null = null;
   const time = () => player?.currentTime() ?? 0;
 
-  const saveProgress = () => db.saveProgress({ matchId: m.id, playerId: p.id, videoId: video.id, videoTimeSec: time(), half });
+  const saveProgress = () => {
+    // 映像の準備中は再生位置が 0 になるので、覚えている位置を消さない
+    if (player) positions[video.id] = time();
+    return db.saveProgress({ matchId: m.id, playerId: p.id, videoId: video.id, videoTimeSec: positions[video.id] ?? 0, half, positions });
+  };
 
   async function persist(e: PlayEvent) {
     await db.saveEvent(e);
@@ -105,7 +111,7 @@ export async function recordScreen(root: HTMLElement, params: Record<string, str
     video = v;
     setHalf(v.half);
     paintTabs();
-    await loadVideo(0);
+    await loadVideo(positions[v.id] ?? 0);
     void saveProgress();
   }
 
@@ -151,7 +157,7 @@ export async function recordScreen(root: HTMLElement, params: Record<string, str
     }
   }
   paintTabs();
-  await loadVideo(resume?.videoTimeSec ?? 0);
+  await loadVideo(positions[video.id] ?? 0);
   const playTimer = setInterval(paintPlay, 1000);
   const progressTimer = setInterval(() => void saveProgress(), 5000);
 

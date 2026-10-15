@@ -38,7 +38,15 @@ export interface PlayEvent {
   videoTimeSec: number;
   createdAt: string; // ISO
 }
-export interface PlayerProgress { matchId: string; playerId: string; videoId?: string; videoTimeSec: number; half: Half }
+export interface PlayerProgress {
+  matchId: string;
+  playerId: string;
+  videoId?: string;
+  videoTimeSec: number;
+  half: Half;
+  /** リンクごとの、どこまで見たか（秒）。切り替えて戻ったときに続きから始めるため */
+  positions?: Record<string, number>;
+}
 export interface Settings { endpoint: string; token: string }
 
 export function newId(): string {
