@@ -157,3 +157,20 @@ test('spread start points stay inside their zone', () => {
     expect(y).toBeLessThan(40.8);
   }
 });
+
+test('yellow marks: yellow fill on success, red inside a yellow rim on failure', () => {
+  const z = { lane: 2, col: 2 };
+  const svg = pitchSvg({ marks: [
+    { zone: z, shape: 'circle', success: true, color: 'yellow' },
+    { zone: z, shape: 'triangle', success: false, color: 'yellow' },
+  ] });
+  expect(svg).toMatch(/<circle class="mark"[^>]*fill="#ffd60a"/);
+  expect(svg).toMatch(/<polygon class="mark" data-shape="triangle"[^>]*fill="#ff4d4f" stroke="#ffd60a"/);
+  expect(svg).not.toContain('fill="#ffffff" stroke="rgba(0,0,0,.45)" stroke-width=".4"/>');
+});
+
+test('yellow legend glyphs are drawn yellow', () => {
+  const svg = pitchSvg({ legend: [[{ glyph: 'circle', label: '奪取', color: 'yellow' }, { glyph: 'square', label: '空中戦' }]] });
+  expect(svg).toMatch(/<circle class="glyph"[^>]*fill="#ffd60a"/);
+  expect(svg).toMatch(/<rect class="glyph"[^>]*fill="#ffffff"/);
+});

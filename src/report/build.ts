@@ -25,8 +25,9 @@ export function reportNames(m: Match, p: Player, teamName: string): Pick<ReportP
 
 const DEFENSE_SHAPE: Record<string, Mark['shape']> = { ball_recovery: 'circle', one_vs_one: 'triangle', aerial: 'square' };
 
-export function defenseMarks(events: PlayEvent[]): Mark[] {
-  return events.filter((e) => e.type === 'defense').map((e) => ({ zone: e.startZone, shape: DEFENSE_SHAPE[e.subtype], success: e.success }));
+export function defenseMarks(events: PlayEvent[], color?: 'yellow'): Mark[] {
+  return events.filter((e) => e.type === 'defense')
+    .map((e) => ({ zone: e.startZone, shape: DEFENSE_SHAPE[e.subtype], success: e.success, ...(color ? { color } : {}) }));
 }
 
 export function shotMarks(events: PlayEvent[]): Mark[] {
@@ -72,7 +73,7 @@ export interface MapFigure { key: FigureKey; title: string; summary: string; svg
 
 const OVERALL_LEGEND: LegendItem[][] = [
   [{ glyph: 'pass-ok', label: 'パス' }, ...DRIBBLE_ITEMS],
-  [{ glyph: 'circle', label: '奪取' }, { glyph: 'triangle', label: '1対1' }, { glyph: 'square', label: '空中戦' }, ...OK_NG],
+  [{ glyph: 'circle', label: '奪取', color: 'yellow' }, { glyph: 'triangle', label: '1対1', color: 'yellow' }, { glyph: 'square', label: '空中戦', color: 'yellow' }, ...OK_NG],
 ];
 
 /**
@@ -84,7 +85,7 @@ export function mapFigures(events: PlayEvent[]): MapFigure[] {
   const overall = halves.map(([h, label]): MapFigure => {
     const ev = events.filter((e) => e.half === h);
     return { key: `overall-${h}`, title: `全体マップ（${label}）`, summary: summary('overall', ev), svg: {
-      arrows: [...passArrows(ev), ...dribbleArrows(ev)], marks: defenseMarks(ev), legend: OVERALL_LEGEND,
+      arrows: [...passArrows(ev), ...dribbleArrows(ev)], marks: defenseMarks(ev, 'yellow'), legend: OVERALL_LEGEND,
     } };
   });
   const dribble = halves.map(([h, label]): MapFigure => {

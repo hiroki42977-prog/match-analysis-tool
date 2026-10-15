@@ -59,3 +59,15 @@ test('overall and dribble maps are split into halves', () => {
   expect(figs[4].summary).toBe('ドリブル 2本・成功 50%');
   expect(figs[4].svg.arrows).toHaveLength(2);
 });
+
+test('defense is yellow only on the overall maps', () => {
+  const evs = [ev({ half: '1H', type: 'defense', subtype: 'one_vs_one', endZone: null })];
+  const figs = mapFigures(evs);
+  const overall = figs.find((f) => f.key === 'overall-1H')!;
+  expect(overall.svg.marks).toHaveLength(1);
+  expect(overall.svg.marks!.every((m) => m.color === 'yellow')).toBe(true);
+  const legendShapes = overall.svg.legend!.flat().filter((it) => ['circle', 'triangle', 'square'].includes(it.glyph));
+  expect(legendShapes.map((it) => it.color)).toEqual(['yellow', 'yellow', 'yellow']);
+  const defense = figs.find((f) => f.key === 'defense')!;
+  expect(defense.svg.marks!.every((m) => m.color === undefined)).toBe(true);
+});

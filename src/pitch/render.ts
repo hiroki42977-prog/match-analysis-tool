@@ -9,10 +9,13 @@ export type DribbleMove = 'regate' | 'conduccion' | 'proteccion';
  */
 export interface Arrow { from: Zone; to: Zone; kind: 'pass' | 'dribble'; success: boolean; move?: DribbleMove }
 
-/** 守備・シュートの印。1プレー＝1つ。白＝成功、赤＝失敗 */
-export interface Mark { zone: Zone; shape: 'circle' | 'triangle' | 'square' | 'diamond'; success: boolean }
+/**
+ * 守備・シュートの印。1プレー＝1つ。白＝成功、赤＝失敗。
+ * color が yellow のとき（全体マップの守備）は、黄色＝成功、黄色のふちで中が赤＝失敗
+ */
+export interface Mark { zone: Zone; shape: 'circle' | 'triangle' | 'square' | 'diamond'; success: boolean; color?: 'yellow' }
 export type Glyph = 'pass-ok' | 'pass-ng' | 'zigzag' | 'wave' | 'coil' | 'circle' | 'triangle' | 'square' | 'diamond' | 'ok' | 'ng';
-export interface LegendItem { glyph: Glyph; label: string }
+export interface LegendItem { glyph: Glyph; label: string; color?: 'yellow' }
 export interface PitchOptions { highlight?: Zone[]; heat?: ZoneCell[]; arrows?: Arrow[]; marks?: Mark[]; legend?: LegendItem[][]; title?: string }
 
 // PNG 変換でもそのまま描けるよう、色はすべて属性で直接指定する
@@ -21,6 +24,8 @@ const GRASS_STRIPE = '#349a54';
 const LINE = '#ffffff';
 const ARROW = '#ffffff';
 const ARROW_FAIL = '#ff4d4f';
+// 全体マップでは守備の印が白い矢印にまぎれるので黄色にする
+const DEFENSE = '#ffd60a';
 const INK = '#0b3d1f';
 const INK_FAIL = '#b42318';
 // 赤は芝の緑と明るさが近く見えにくいので、下に暗い縁取りを敷く
@@ -91,6 +96,11 @@ function markShape(shape: Mark['shape'], cx: number, cy: number, size: number, a
   return `<polygon class="mark" data-shape="${shape}" points="${pts.map(([x, y]) => `${f(x)},${f(y)}`).join(' ')}" ${attrs}/>`;
 }
 
+function markPaint(success: boolean, color?: 'yellow'): string {
+  if (color === 'yellow') return success ? `fill="${DEFENSE}" stroke="${HALO}" stroke-width=".4"` : `fill="${ARROW_FAIL}" stroke="${DEFENSE}" stroke-width=".5"`;
+  return `fill="${success ? '#ffffff' : ARROW_FAIL}" stroke="${HALO}" stroke-width=".4"`;
+}
+
 /** 印をマスの中に並べる（数に合わせて列と行を決める） */
 function markLayer(marks: Mark[]): string {
   const groups = new Map<string, Mark[]>();
@@ -109,8 +119,7 @@ function markLayer(marks: Mark[]): string {
     list.forEach((m, i) => {
       const cx = r.x + 1 + cw * (i % cols + 0.5);
       const cy = r.y + 1 + ch * (Math.floor(i / cols) + 0.5);
-      const fill = m.success ? '#ffffff' : ARROW_FAIL;
-      out.push(markShape(m.shape, cx, cy, size, `data-cx="${f(cx)}" data-cy="${f(cy)}" fill="${fill}" stroke="${HALO}" stroke-width=".4"`));
+      out.push(markShape(m.shape, cx, cy, size, `data-cx="${f(cx)}" data-cy="${f(cy)}" ${markPaint(m.success, m.color)}`));
     });
   }
   return out.join('');
@@ -236,9 +245,9 @@ const LEGEND_FONT = 2.6;
 /** 凡例の絵を1つ描く（x は左端、y は行の中心） */
 const glyphWidth = (g: Glyph) => (g === 'zigzag' || g === 'wave' || g === 'coil' ? 10 : 6);
 
-function glyphSvg(g: Glyph, x: number, y: number): string {
+function glyphSvg(g: Glyph, x: number, y: number, color?: 'yellow'): string {
   const w = glyphWidth(g);
-  const attrs = `fill="#ffffff" stroke="${HALO}" stroke-width=".4"`;
+  const attrs = markPaint(true, color);
   switch (g) {
     case 'pass-ok':
     case 'pass-ng': {
@@ -270,7 +279,7 @@ function legendRow(items: LegendItem[], y: number): string {
   const left = -4 + (113 - total * scale) / 2;
   let x = 0;
   const body = items.map((it, i) => {
-    const out = `<g class="legend-item">${glyphSvg(it.glyph, x, 0)}<text x="${f(x + glyphWidth(it.glyph) + 1)}" y="${f(LEGEND_FONT * .36)}" font-size="${LEGEND_FONT}" fill="#ffffff">${it.label}</text></g>`;
+    const out = `<g class="legend-item">${glyphSvg(it.glyph, x, 0, it.color)}<text x="${f(x + glyphWidth(it.glyph) + 1)}" y="${f(LEGEND_FONT * .36)}" font-size="${LEGEND_FONT}" fill="#ffffff">${it.label}</text></g>`;
     x += widths[i];
     return out;
   }).join('');
