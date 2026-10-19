@@ -59,12 +59,16 @@ function teamTable(players: Player[], events: PlayEvent[]): HTMLElement {
 
 const HEAT_TABS: { type: PlayType; label: string }[] = [{ type: 'pass', label: 'パス' }, { type: 'dribble', label: 'ドリブル' }];
 
+// レポート入力から戻ったときに先頭の選手へ戻らないよう、試合ごとに選んでいた選手を覚えておく
+const chosen = new Map<string, string>();
+
 export async function resultsScreen(root: HTMLElement, params: Record<string, string>) {
   const m = await db.getMatch(params.id);
   if (!m) return go('#/');
   const [allPlayers, events] = await Promise.all([db.listPlayers(m.teamId), db.listEvents(m.id)]);
   const players = allPlayers.filter((p) => events.some((e) => e.playerId === p.id));
-  let current = players[0]?.id;
+  const matchId = m.id;
+  let current = players.find((p) => p.id === chosen.get(m.id))?.id ?? players[0]?.id;
   let heatType: PlayType = 'pass';
   const body = h('div', { class: 'results' });
   const reportMsg = h('p', { class: 'status', 'aria-live': 'polite' });
@@ -132,7 +136,7 @@ export async function resultsScreen(root: HTMLElement, params: Record<string, st
     }
     const mine = events.filter((e) => e.playerId === current);
     body.replaceChildren(
-      h('div', { class: 'chips' }, ...players.map((p) => h('button', { class: p.id === current ? 'on' : '', onclick: () => { current = p.id; paint(); } }, `#${p.number} ${p.name}`))),
+      h('div', { class: 'chips' }, ...players.map((p) => h('button', { class: p.id === current ? 'on' : '', onclick: () => { current = p.id; chosen.set(matchId, p.id); paint(); } }, `#${p.number} ${p.name}`))),
       // 集計表を上に、図はその下に1枚ずつ横幅いっぱいで並べる
       h('section', {}, h('h2', {}, '集計'), statsTable(mine)),
       h('section', { class: 'figures' },

@@ -81,3 +81,15 @@ test('a file that is not an image shows a message', async ({ page }) => {
   await page.getByLabel('相手のエンブレム').setInputFiles({ name: 'x.png', mimeType: 'image/png', buffer: Buffer.from('not an image') });
   await expect(page.getByText('画像を読み込めませんでした')).toBeVisible();
 });
+
+test('coming back from the report form keeps the chosen player for the PDF', async ({ page }) => {
+  await toResults(page);
+  await page.getByRole('button', { name: 'レポート入力' }).tap();
+  await page.getByLabel('コメント').fill('#10 へのコメント');
+  await page.getByRole('button', { name: '← 結果に戻る' }).tap();
+  // 選手を選び直さずに PDF を作る
+  await expect(page.locator('.chips button.on')).toHaveText('#10 山田 太郎');
+  await page.getByRole('button', { name: 'PDF 書き出し' }).tap();
+  const [pdf] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'PDF を保存' }).tap()]);
+  expect(pdf.suggestedFilename()).toContain('#10山田 太郎');
+});
