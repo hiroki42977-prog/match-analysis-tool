@@ -1,5 +1,6 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import { upgradeMatch, type LegacyMatch } from '../domain/videos';
+import { emptyMatchReport, emptyPlayerReport, type MatchReport, type PlayerReport } from '../domain/report';
 import type { Match, PlayEvent, Player, PlayerProgress, Settings, Team } from '../domain/types';
 
 export interface QueuedOp {
@@ -14,15 +15,22 @@ export interface QueuedOp {
 let dbp: Promise<IDBPDatabase> | null = null;
 
 export async function openDb(name = 'match-analysis'): Promise<void> {
-  dbp = openDB(name, 1, {
-    upgrade(d) {
-      d.createObjectStore('teams', { keyPath: 'id' });
-      d.createObjectStore('players', { keyPath: 'id' }).createIndex('teamId', 'teamId');
-      d.createObjectStore('matches', { keyPath: 'id' });
-      d.createObjectStore('events', { keyPath: 'id' }).createIndex('matchId', 'matchId');
-      d.createObjectStore('progress', { keyPath: ['matchId', 'playerId'] });
-      d.createObjectStore('queue', { keyPath: 'seq', autoIncrement: true });
-      d.createObjectStore('settings');
+  // 版2：PDF 用のレポートの保存場所を足した。版1のデータには手を付けない
+  dbp = openDB(name, 2, {
+    upgrade(d, oldVersion) {
+      if (oldVersion < 1) {
+        d.createObjectStore('teams', { keyPath: 'id' });
+        d.createObjectStore('players', { keyPath: 'id' }).createIndex('teamId', 'teamId');
+        d.createObjectStore('matches', { keyPath: 'id' });
+        d.createObjectStore('events', { keyPath: 'id' }).createIndex('matchId', 'matchId');
+        d.createObjectStore('progress', { keyPath: ['matchId', 'playerId'] });
+        d.createObjectStore('queue', { keyPath: 'seq', autoIncrement: true });
+        d.createObjectStore('settings');
+      }
+      if (oldVersion < 2) {
+        d.createObjectStore('matchReports', { keyPath: 'matchId' });
+        d.createObjectStore('playerReports', { keyPath: ['matchId', 'playerId'] });
+      }
     },
   });
   await dbp;
@@ -86,3 +94,17 @@ export async function countPlayerEvents(playerId: string): Promise<number> {
   const all: PlayEvent[] = await (await db()).getAll('events');
   return all.filter((e) => e.playerId === playerId).length;
 }
+
+// あとから項目が増えても欠けないよう、空のものに重ねて返す
+export async function getMatchReport(matchId: string): Promise<MatchReport> {
+  const r: Partial<MatchReport> | undefined = await (await db()).get('matchReports', matchId);
+  const empty = emptyMatchReport(matchId);
+  return { ...empty, ...r, score: { ...empty.score, ...r?.score } };
+}
+export async function saveMatchReport(r: MatchReport) { await (await db()).put('matchReports', r); }
+
+export async function getPlayerReport(matchId: string, playerId: string): Promise<PlayerReport> {
+  const r: Partial<PlayerReport> | undefined = await (await db()).get('playerReports', [matchId, playerId]);
+  return { ...emptyPlayerReport(matchId, playerId), ...r };
+}
+export async function savePlayerReport(r: PlayerReport) { await (await db()).put('playerReports', r); }

@@ -77,3 +77,43 @@ test('countPlayerEvents across matches', async () => {
   expect(await db.countPlayerEvents('p9')).toBe(2);
   expect(await db.countPlayerEvents('none')).toBe(0);
 });
+
+import { openDB } from 'idb';
+import { emptyMatchReport, emptyPlayerReport } from '../src/domain/report';
+
+test('reports: empty at first, saved per match and per player', async () => {
+  expect(await db.getMatchReport('m1')).toEqual(emptyMatchReport('m1'));
+  expect(await db.getPlayerReport('m1', 'p1')).toEqual(emptyPlayerReport('m1', 'p1'));
+  await db.saveMatchReport({ ...emptyMatchReport('m1'), venue: '市民グラウンド' });
+  await db.savePlayerReport({ ...emptyPlayerReport('m1', 'p1'), comment: 'よかった' });
+  expect((await db.getMatchReport('m1')).venue).toBe('市民グラウンド');
+  expect((await db.getPlayerReport('m1', 'p1')).comment).toBe('よかった');
+  expect((await db.getPlayerReport('m1', 'p2')).comment).toBe('');
+});
+
+test('opening a version-1 database keeps everything', async () => {
+  const name = `v1-${++n}`;
+  const old = await openDB(name, 1, {
+    upgrade(d) {
+      d.createObjectStore('teams', { keyPath: 'id' });
+      d.createObjectStore('players', { keyPath: 'id' }).createIndex('teamId', 'teamId');
+      d.createObjectStore('matches', { keyPath: 'id' });
+      d.createObjectStore('events', { keyPath: 'id' }).createIndex('matchId', 'matchId');
+      d.createObjectStore('progress', { keyPath: ['matchId', 'playerId'] });
+      d.createObjectStore('queue', { keyPath: 'seq', autoIncrement: true });
+      d.createObjectStore('settings');
+    },
+  });
+  await old.put('teams', { id: 't1', name: 'サンプルFC' });
+  await old.put('players', { id: 'p1', teamId: 't1', number: 10, name: '山田' });
+  await old.put('matches', { id: 'm1', teamId: 't1', date: '2026-10-01', opponent: 'X', format: '8', videos: [{ id: 'v1', url: 'https://youtu.be/abcDEF12345', half: '1H' }], playerIds: ['p1'] });
+  await old.put('events', ev({ id: 'old-e' }));
+  old.close();
+
+  await db.openDb(name);
+  expect(await db.listTeams()).toEqual([{ id: 't1', name: 'サンプルFC' }]);
+  expect((await db.listPlayers('t1')).map((p) => p.id)).toEqual(['p1']);
+  expect((await db.getMatch('m1'))?.opponent).toBe('X');
+  expect((await db.listEvents('m1')).map((e) => e.id)).toEqual(['old-e']);
+  expect(await db.getMatchReport('m1')).toEqual(emptyMatchReport('m1'));
+});

@@ -8,8 +8,9 @@ export type DefenseSub = 'ball_recovery' | 'one_vs_one' | 'aerial';
 export type ShotSub = 'on_target' | 'off_target';
 export type Foot = 'R' | 'L';
 
-export interface Team { id: string; name: string }
-export interface Player { id: string; teamId: string; number: number; name: string }
+/** emblem・photo は PDF 用の画像（長い辺 600px の JPEG の data URL）。一度入れれば次の試合でも使う */
+export interface Team { id: string; name: string; emblem?: string }
+export interface Player { id: string; teamId: string; number: number; name: string; photo?: string }
 /** 試合の映像。1試合が複数のリンクに分かれて届くことがあるため、リンクごとに前半・後半を持つ */
 export interface MatchVideo { id: string; url: string; half: Half }
 export interface Match {
