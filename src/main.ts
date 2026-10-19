@@ -7,6 +7,7 @@ import { matchFormScreen } from './ui/screens/matchForm';
 import { eventListScreen } from './ui/screens/eventList';
 import { playerSelectScreen } from './ui/screens/playerSelect';
 import { recordScreen } from './ui/screens/record';
+import { reportFormScreen } from './ui/screens/reportForm';
 import { resultsScreen } from './ui/screens/results';
 import { rosterScreen } from './ui/screens/roster';
 import { settingsScreen } from './ui/screens/settings';
@@ -21,6 +22,7 @@ void (async () => {
   route('/match/:id/record/:playerId', recordScreen);
   route('/match/:id/list/:playerId', eventListScreen);
   route('/match/:id/results', resultsScreen);
+  route('/match/:id/report/:playerId', reportFormScreen);
   route('/match/:id', playerSelectScreen);
   startRouter(document.getElementById('app')!);
 

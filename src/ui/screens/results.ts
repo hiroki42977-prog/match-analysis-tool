@@ -150,6 +150,7 @@ export async function resultsScreen(root: HTMLElement, params: Record<string, st
       h('button', { onclick: () => go(`#/match/${m.id}`) }, '← 選手を選ぶ'),
       h('h1', {}, `結果　${m.date} vs ${m.opponent}`),
       h('span', { class: 'spacer' }),
+      h('button', { onclick: () => current && go(`#/match/${m.id}/report/${current}`) }, 'レポート入力'),
       h('button', { onclick: () => void csv() }, 'CSV 書き出し'),
       pdfBtn,
       reportBtn),
