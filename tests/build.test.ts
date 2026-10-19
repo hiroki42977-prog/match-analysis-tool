@@ -1,73 +1,39 @@
 import { expect, test } from 'vitest';
-import { defenseMarks, dribbleArrows, shotMarks, summary } from '../src/report/build';
+import { sheetFigures } from '../src/report/build';
 import { ev } from './helpers';
 
-test('dribble arrows carry the move', () => {
-  const a = dribbleArrows([
-    ev({ type: 'dribble', subtype: 'regate' }),
-    ev({ type: 'dribble', subtype: 'conduccion', success: false }),
-    ev({ type: 'dribble', subtype: 'proteccion' }),
+test('sheet figures: always 1st and 2nd', () => {
+  expect(sheetFigures([])).toEqual([
+    { key: '1H', label: '1st', svg: { label: '1st', arrows: [], marks: [] } },
+    { key: '2H', label: '2nd', svg: { label: '2nd', arrows: [], marks: [] } },
   ]);
-  expect(a.map((x) => x.move)).toEqual(['regate', 'conduccion', 'proteccion']);
-  expect(a[1]).toMatchObject({ kind: 'dribble', success: false });
 });
 
-test('defense marks: 奪取=circle, 1対1=triangle, 空中戦=square', () => {
-  const m = defenseMarks([
+test('sheet figures: each play goes to the right shape', () => {
+  const evs = [
+    ev({ type: 'pass', success: true }),
+    ev({ type: 'pass', success: false }),
+    ev({ type: 'dribble', subtype: 'conduccion' }),
+    ev({ type: 'dribble', subtype: 'regate', startZone: { lane: 2, col: 2 }, endZone: { lane: 2, col: 3 } }),
+    ev({ type: 'dribble', subtype: 'proteccion' }),
     ev({ type: 'defense', subtype: 'ball_recovery', endZone: null }),
     ev({ type: 'defense', subtype: 'one_vs_one', endZone: null, success: false }),
     ev({ type: 'defense', subtype: 'aerial', endZone: null }),
-    ev({ type: 'pass' }),
-  ]);
-  expect(m.map((x) => [x.shape, x.success])).toEqual([['circle', true], ['triangle', false], ['square', true]]);
-});
-
-test('shot marks: R=circle, L=diamond, success = on target', () => {
-  const m = shotMarks([
-    ev({ type: 'shot', subtype: 'on_target', foot: 'R', success: true, endZone: null }),
-    ev({ type: 'shot', subtype: 'off_target', foot: 'L', success: false, endZone: null }),
-  ]);
-  expect(m.map((x) => [x.shape, x.success])).toEqual([['circle', true], ['diamond', false]]);
-});
-
-test('one-line summaries', () => {
-  const evs = [
-    ev({ type: 'pass', success: true }), ev({ type: 'pass', success: true }), ev({ type: 'pass', success: true }), ev({ type: 'pass', success: false }),
-    ev({ type: 'dribble', subtype: 'regate', success: false }),
     ev({ type: 'shot', subtype: 'on_target', foot: 'R', success: true, endZone: null }),
     ev({ type: 'shot', subtype: 'off_target', foot: 'L', success: false, endZone: null }),
   ];
-  expect(summary('pass', evs)).toBe('パス 4本・成功 75%');
-  expect(summary('dribble', evs)).toBe('ドリブル 1本・成功 0%');
-  expect(summary('defense', evs)).toBe('守備 0本');
-  expect(summary('shot', evs)).toBe('シュート 2本・枠内 50%');
-  expect(summary('overall', evs)).toBe('パス 4本 75%・ドリブル 1本 0%・守備 0本');
+  const [first, second] = sheetFigures(evs);
+  expect(first.svg.arrows.map((a) => [a.kind, a.success])).toEqual([['pass', true], ['pass', false], ['conduccion', true]]);
+  expect(first.svg.marks.map((m) => [m.icon, m.success])).toEqual([
+    ['L', true], ['P', true], ['ball', true], ['1', false], ['空', true], ['shot-on', true], ['shot-off', false],
+  ]);
+  // レガーテは始めたマスに置く
+  expect(first.svg.marks[0].zone).toEqual({ lane: 2, col: 2 });
+  expect(second.svg).toEqual({ label: '2nd', arrows: [], marks: [] });
 });
 
-import { mapFigures } from '../src/report/build';
-
-test('overall and dribble maps are split into halves', () => {
-  const evs = [
-    ev({ half: '1H', type: 'dribble', subtype: 'regate' }),
-    ev({ half: '2H', type: 'dribble', subtype: 'regate' }),
-    ev({ half: '2H', type: 'dribble', subtype: 'proteccion', success: false }),
-  ];
-  const figs = mapFigures(evs);
-  expect(figs.map((f) => f.key)).toEqual(['overall-1H', 'overall-2H', 'pass', 'dribble-1H', 'dribble-2H', 'defense', 'shot']);
-  expect(figs.map((f) => f.title)).toEqual(['全体マップ（前半）', '全体マップ（後半）', 'パス', 'ドリブル（前半）', 'ドリブル（後半）', '守備', 'シュート']);
-  expect(figs[3].summary).toBe('ドリブル 1本・成功 100%');
-  expect(figs[4].summary).toBe('ドリブル 2本・成功 50%');
-  expect(figs[4].svg.arrows).toHaveLength(2);
-});
-
-test('defense is yellow only on the overall maps', () => {
-  const evs = [ev({ half: '1H', type: 'defense', subtype: 'one_vs_one', endZone: null })];
-  const figs = mapFigures(evs);
-  const overall = figs.find((f) => f.key === 'overall-1H')!;
-  expect(overall.svg.marks).toHaveLength(1);
-  expect(overall.svg.marks!.every((m) => m.color === 'yellow')).toBe(true);
-  const legendShapes = overall.svg.legend!.flat().filter((it) => ['circle', 'triangle', 'square'].includes(it.glyph));
-  expect(legendShapes.map((it) => it.color)).toEqual(['yellow', 'yellow', 'yellow']);
-  const defense = figs.find((f) => f.key === 'defense')!;
-  expect(defense.svg.marks!.every((m) => m.color === undefined)).toBe(true);
+test('sheet figures: halves are split', () => {
+  const [first, second] = sheetFigures([ev({ half: '1H' }), ev({ half: '2H' }), ev({ half: '2H' })]);
+  expect(first.svg.arrows).toHaveLength(1);
+  expect(second.svg.arrows).toHaveLength(2);
 });

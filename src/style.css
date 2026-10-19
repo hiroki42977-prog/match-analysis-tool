@@ -128,3 +128,6 @@ input.num { width: 96px; flex: none; }
 .figures .pitch svg { border-radius: 10px; }
 /* 図は横幅いっぱい。ただし見出しと一緒に1画面に収まる高さまで */
 .figures .pitch svg { width: auto; max-width: 100%; max-height: calc(100vh - 120px); margin: 0 auto; }
+/* 見本の資料と同じ白地の図（1st・2nd） */
+.figure.sheet { background: #ffffff; border: 1px solid #d9d9d9; border-radius: 10px; padding: 8px; }
+.figure.sheet svg { width: 100%; height: auto; display: block; max-height: calc(100vh - 120px); }

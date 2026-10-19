@@ -1,7 +1,8 @@
 import type { Match, Player } from '../domain/types';
 import { drawSvg } from '../pitch/png';
-import { pitchSvg } from '../pitch/render';
-import type { MapFigure } from './build';
+import { SHEET } from '../pitch/perspective';
+import { sheetPitchSvg } from '../pitch/sheet';
+import type { SheetFigure } from './build';
 
 const safe = (s: string) => s.replace(/[/\\]/g, '-');
 
@@ -23,7 +24,7 @@ const FONT = "-apple-system, 'Hiragino Sans', sans-serif";
  * 図1枚につき1ページの PDF を作る。ブラウザ専用。
  * PDF 用の日本語フォントを持たなくて済むよう、見出しも図もキャンバスに描いた画像を貼る
  */
-export async function buildFiguresPdf(figs: MapFigure[], heading: string): Promise<Blob> {
+export async function buildFiguresPdf(figs: SheetFigure[], heading: string): Promise<Blob> {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const canvas = document.createElement('canvas');
@@ -37,18 +38,13 @@ export async function buildFiguresPdf(figs: MapFigure[], heading: string): Promi
     ctx.font = `36px ${FONT}`;
     ctx.textBaseline = 'top';
     ctx.fillText(heading, PAD, PAD);
-    ctx.fillStyle = '#111111';
-    ctx.font = `bold 54px ${FONT}`;
-    ctx.fillText(fig.title, PAD, PAD + 56);
-    ctx.font = `38px ${FONT}`;
-    ctx.fillText(fig.summary, PAD, PAD + 128);
-    // 残りの場所に、図の縦横比（113:76）のまま大きく入れる
-    const top = PAD + 196;
+    // 残りの場所に、図の縦横比のまま大きく入れる
+    const top = PAD + 70;
     const boxW = W - PAD * 2;
     const boxH = H - top - PAD;
-    const w = Math.min(boxW, boxH * 113 / 76);
-    const h = w * 76 / 113;
-    await drawSvg(ctx, pitchSvg(fig.svg), (W - w) / 2, top, w, h);
+    const w = Math.min(boxW, boxH * SHEET.w / SHEET.h);
+    const h = w * SHEET.h / SHEET.w;
+    await drawSvg(ctx, sheetPitchSvg(fig.svg), (W - w) / 2, top, w, h);
     if (i > 0) doc.addPage();
     doc.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 297, 210);
   }

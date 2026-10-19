@@ -32,22 +32,21 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
   await expect(stats.getByRole('row', { name: /パス 合計/ })).toContainText('2/3 67%');
   await expect(stats.getByRole('row', { name: /後ろ/ }).first()).toContainText('0/1 0%');
 
-  // 図: 全体マップ（絵だけ）、パス、ドリブル、守備、シュート。上に一言まとめ
-  await expect(page.locator('#map-pass .summary')).toHaveText('パス 3本・成功 67%');
-  await expect(page.locator('#map-overall-1H .summary')).toHaveText('パス 3本 67%・ドリブル 1本 100%・守備 1本 100%');
-  await expect(page.locator('#map-overall-1H')).not.toContainText('パ3');
-  await expect(page.locator('#map-overall-1H .mark')).toHaveCount(1);
-  await expect(page.locator('#map-overall-1H path.dribble[data-style="wave"]')).toHaveCount(1);
-  await expect(page.locator('#map-overall-2H .summary')).toHaveText('パス 0本・ドリブル 0本・守備 0本');
-  await expect(page.locator('#map-defense .mark')).toHaveCount(1);
-  await expect(page.locator('#map-shot .mark')).toHaveCount(1);
-  await expect(page.locator('#map-dribble-1H .legend-item')).toHaveCount(5);
+  // 図: 見本の資料と同じく 1st・2nd の2枚だけ
+  await expect(page.locator('.figures .figure')).toHaveCount(2);
+  await expect(page.locator('#map-1H')).toContainText('1st');
+  await expect(page.locator('#map-2H')).toContainText('2nd');
+  // 前半: パス3本＋コンドゥクシオン1本の矢印、奪取とシュートの印
+  await expect(page.locator('#map-1H .arrow')).toHaveCount(4);
+  await expect(page.locator('#map-1H .sheet-mark[data-icon="ball"]')).toHaveCount(1);
+  await expect(page.locator('#map-1H .sheet-mark[data-icon="shot-on"]')).toHaveCount(1);
+  await expect(page.locator('#map-2H .arrow')).toHaveCount(0);
 
   // 図は画面の横幅いっぱい（iPad 横向き 1180px で 1000px 以上）
-  for (const id of ['#map-overall-1H', '#map-dribble-1H', '#heatmap']) {
+  for (const id of ['#map-1H', '#heatmap']) {
     const box = (await page.locator(`${id} svg`).first().boundingBox())!;
     expect(box.width, id).toBeGreaterThan(1000);
-    expect(box.height, id).toBeLessThan(720); // 見出しと一緒に1画面（820px）に収まる
+    expect(box.height, id).toBeLessThan(720);
   }
 
   // 場所ごとの本数（パス・ドリブル）
@@ -62,14 +61,14 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
   expect(csv.startsWith('﻿記録ID,試合日,対戦相手')).toBe(true);
   expect(csv.trim().split('\r\n')).toHaveLength(8);
 
-  // PDF（今選んでいる選手1人分の図7枚）
+  // PDF（今選んでいる選手1人分）
   // iPad では共有はボタンを押した直後にしか開けないため、作るボタンと保存するボタンを分ける
   await page.getByRole('button', { name: 'PDF 書き出し' }).tap();
   const [pdf] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'PDF を保存' }).tap()]);
   expect(pdf.suggestedFilename()).toMatch(/_vs_.*\.pdf$/);
   const pdfText = readFileSync((await pdf.path())!, 'latin1');
   expect(pdfText.startsWith('%PDF')).toBe(true);
-  expect(pdfText.match(/\/Type \/Page[^s]/g)).toHaveLength(7);
+  expect(pdfText.match(/\/Type \/Page[^s]/g)).toHaveLength(2);
 
   // レポート作成
   await page.getByRole('button', { name: 'レポート作成' }).tap();
@@ -78,8 +77,7 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
   expect(reports).toHaveLength(2);
   expect(reports.map((r) => r.playerFileName).sort()).toEqual(['#10 山田 太郎（サンプルFC）', '#7 佐藤 一郎（サンプルFC）']);
   for (const r of reports) {
-    expect(r.images).toHaveLength(7);
-    expect(r.images[0].label).toContain('全体マップ（前半）');
+    expect(r.images.map((i: { label: string }) => i.label)).toEqual(['1st', '2nd']);
     for (const img of r.images) expect(img.pngBase64.startsWith('iVBOR')).toBe(true);
     expect(r.stats.values[19][0]).toBe('パス成功');
     expect(r.statsTabName).toMatch(/^\d+\/\d+ vs テストFC スタッツ$/);

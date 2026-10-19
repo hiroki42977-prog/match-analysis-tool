@@ -43,7 +43,7 @@ test('screenshot: results screen', async ({ page }) => {
   await page.getByRole('button', { name: '結果を見る' }).tap();
   await page.locator('.chips').getByRole('button', { name: '#10 山田 太郎' }).tap();
   await page.screenshot({ path: process.env.SHOTS + '/results.png', fullPage: true });
-  for (const k of ['overall-1H', 'pass', 'dribble-1H', 'defense', 'shot']) {
+  for (const k of ['1H', '2H']) {
     await page.locator(`#map-${k}`).screenshot({ path: process.env.SHOTS + `/map-${k}.png` });
   }
   await page.getByRole('button', { name: 'PDF 書き出し' }).tap();

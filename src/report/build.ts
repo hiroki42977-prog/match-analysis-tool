@@ -1,8 +1,7 @@
-import { computeStats, rate } from '../domain/stats';
-import type { Match, PlayEvent, PlayType, Player } from '../domain/types';
-import type { Arrow, DribbleMove, LegendItem, Mark, PitchOptions } from '../pitch/render';
-import { pitchSvg } from '../pitch/render';
-import { svgToPngBase64 } from '../pitch/png';
+import { computeStats } from '../domain/stats';
+import type { Half, Match, PlayEvent, Player } from '../domain/types';
+import { sheetPitchSvg, type SheetArrow, type SheetIcon, type SheetMark, type SheetPitchOptions } from '../pitch/sheet';
+import { sheetPngBase64 } from '../pitch/png';
 import * as db from '../storage/db';
 import { postToScript } from '../sync/client';
 import { buildStatsSheet, type StatsSheet } from './layout';
@@ -23,90 +22,24 @@ export function reportNames(m: Match, p: Player, teamName: string): Pick<ReportP
   return { playerFileName: `#${p.number} ${p.name}（${teamName}）`, statsTabName: `${base} スタッツ`, mapTabName: `${base} マップ` };
 }
 
-const DEFENSE_SHAPE: Record<string, Mark['shape']> = { ball_recovery: 'circle', one_vs_one: 'triangle', aerial: 'square' };
+const ICON: Record<string, SheetIcon> = {
+  regate: 'L', proteccion: 'P', ball_recovery: 'ball', one_vs_one: '1', aerial: '空', on_target: 'shot-on', off_target: 'shot-off',
+};
 
-export function defenseMarks(events: PlayEvent[], color?: 'yellow'): Mark[] {
-  return events.filter((e) => e.type === 'defense')
-    .map((e) => ({ zone: e.startZone, shape: DEFENSE_SHAPE[e.subtype], success: e.success, ...(color ? { color } : {}) }));
-}
+export interface SheetFigure { key: Half; label: '1st' | '2nd'; svg: SheetPitchOptions }
 
-export function shotMarks(events: PlayEvent[]): Mark[] {
-  return events.filter((e) => e.type === 'shot').map((e) => ({ zone: e.startZone, shape: e.foot === 'L' ? 'diamond' : 'circle', success: e.subtype === 'on_target' }));
-}
-
-export function passArrows(events: PlayEvent[]): Arrow[] {
-  return events.filter((e) => e.type === 'pass' && e.endZone).map((e) => ({ from: e.startZone, to: e.endZone!, kind: 'pass', success: e.success }));
-}
-
-export function dribbleArrows(events: PlayEvent[]): Arrow[] {
-  return events.filter((e) => e.type === 'dribble' && e.endZone)
-    .map((e) => ({ from: e.startZone, to: e.endZone!, kind: 'dribble', success: e.success, move: e.subtype as DribbleMove }));
-}
-
-type SummaryKind = 'pass' | 'dribble' | 'defense' | 'shot' | 'overall';
-type FigureKey = 'overall-1H' | 'overall-2H' | 'pass' | 'dribble-1H' | 'dribble-2H' | 'defense' | 'shot';
-const NAME: Record<Exclude<SummaryKind, 'overall'>, string> = { pass: 'パス', dribble: 'ドリブル', defense: '守備', shot: 'シュート' };
-
-function countOf(events: PlayEvent[], type: PlayType) {
-  const list = events.filter((e) => e.type === type);
-  const r = rate({ success: list.filter((e) => e.success).length, fail: list.filter((e) => !e.success).length });
-  return { n: list.length, pct: r === null ? '' : `${Math.round(r * 100)}%` };
-}
-
-/** 図の上に出す一言まとめ（例: 「パス 12本・成功 75%」） */
-export function summary(kind: SummaryKind, events: PlayEvent[]): string {
-  if (kind === 'overall') {
-    return (['pass', 'dribble', 'defense'] as const).map((t) => {
-      const c = countOf(events, t);
-      return c.n ? `${NAME[t]} ${c.n}本 ${c.pct}` : `${NAME[t]} 0本`;
-    }).join('・');
-  }
-  const c = countOf(events, kind);
-  if (!c.n) return `${NAME[kind]} 0本`;
-  return `${NAME[kind]} ${c.n}本・${kind === 'shot' ? '枠内' : '成功'} ${c.pct}`;
-}
-
-const OK_NG: LegendItem[] = [{ glyph: 'ok', label: '成功' }, { glyph: 'ng', label: '失敗' }];
-const DRIBBLE_ITEMS: LegendItem[] = [{ glyph: 'zigzag', label: 'レガーテ' }, { glyph: 'wave', label: 'コンドゥクシオン' }, { glyph: 'coil', label: 'プロテクション' }];
-
-export interface MapFigure { key: FigureKey; title: string; summary: string; svg: PitchOptions }
-
-const OVERALL_LEGEND: LegendItem[][] = [
-  [{ glyph: 'pass-ok', label: 'パス' }, ...DRIBBLE_ITEMS],
-  [{ glyph: 'circle', label: '奪取', color: 'yellow' }, { glyph: 'triangle', label: '1対1', color: 'yellow' }, { glyph: 'square', label: '空中戦', color: 'yellow' }, ...OK_NG],
-];
-
-/**
- * レポートと結果画面で使う図。線が混み合う全体マップとドリブルは前半・後半に分ける。
- * 凡例は図の中に絵で入る
- */
-export function mapFigures(events: PlayEvent[]): MapFigure[] {
-  const halves = [['1H', '前半'], ['2H', '後半']] as const;
-  const overall = halves.map(([h, label]): MapFigure => {
-    const ev = events.filter((e) => e.half === h);
-    return { key: `overall-${h}`, title: `全体マップ（${label}）`, summary: summary('overall', ev), svg: {
-      arrows: [...passArrows(ev), ...dribbleArrows(ev)], marks: defenseMarks(ev, 'yellow'), legend: OVERALL_LEGEND,
-    } };
+/** 見本の資料と同じく、前半（1st）・後半（2nd）の2枚に全部のプレーを入れる */
+export function sheetFigures(events: PlayEvent[]): SheetFigure[] {
+  return ([['1H', '1st'], ['2H', '2nd']] as const).map(([key, label]) => {
+    const arrows: SheetArrow[] = [];
+    const marks: SheetMark[] = [];
+    for (const e of events.filter((x) => x.half === key)) {
+      if (e.type === 'pass' && e.endZone) arrows.push({ from: e.startZone, to: e.endZone, kind: 'pass', success: e.success });
+      else if (e.type === 'dribble' && e.subtype === 'conduccion' && e.endZone) arrows.push({ from: e.startZone, to: e.endZone, kind: 'conduccion', success: e.success });
+      else if (ICON[e.subtype]) marks.push({ zone: e.startZone, icon: ICON[e.subtype], success: e.type === 'shot' ? e.subtype === 'on_target' : e.success });
+    }
+    return { key, label, svg: { label, arrows, marks } };
   });
-  const dribble = halves.map(([h, label]): MapFigure => {
-    const ev = events.filter((e) => e.half === h);
-    return { key: `dribble-${h}`, title: `ドリブル（${label}）`, summary: summary('dribble', ev), svg: {
-      arrows: dribbleArrows(ev), legend: [DRIBBLE_ITEMS, OK_NG],
-    } };
-  });
-  return [
-    ...overall,
-    { key: 'pass', title: 'パス', summary: summary('pass', events), svg: {
-      arrows: passArrows(events), legend: [[{ glyph: 'pass-ok', label: '成功' }, { glyph: 'pass-ng', label: '失敗' }]],
-    } },
-    ...dribble,
-    { key: 'defense', title: '守備', summary: summary('defense', events), svg: {
-      marks: defenseMarks(events), legend: [[{ glyph: 'circle', label: 'ボール奪取' }, { glyph: 'triangle', label: '1対1' }, { glyph: 'square', label: '空中戦' }, ...OK_NG]],
-    } },
-    { key: 'shot', title: 'シュート', summary: summary('shot', events), svg: {
-      marks: shotMarks(events), legend: [[{ glyph: 'circle', label: '右足 R' }, { glyph: 'diamond', label: '左足 L' }, { glyph: 'ok', label: '枠内' }, { glyph: 'ng', label: '枠外' }]],
-    } },
-  ];
 }
 
 /** その試合で記録がある選手全員分のレポートを、1人ずつ Apps Script に送る */
@@ -130,8 +63,8 @@ export async function buildReports(
     const mine = events.filter((e) => e.playerId === p.id);
     const title = `${name} ｜ ${m.date} vs ${m.opponent} ｜ ${m.format}人制`;
     const images: ReportImage[] = [];
-    for (const fig of mapFigures(mine)) {
-      images.push({ label: `${fig.title}　${fig.summary}`, pngBase64: await svgToPngBase64(pitchSvg(fig.svg)) });
+    for (const fig of sheetFigures(mine)) {
+      images.push({ label: fig.label, pngBase64: await sheetPngBase64(sheetPitchSvg(fig.svg)) });
     }
     const payload: ReportPayload = {
       action: 'buildReport',
