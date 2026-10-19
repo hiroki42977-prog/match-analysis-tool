@@ -83,7 +83,7 @@ function heatLayer(cells: ZoneCell[]): string {
   }).join('');
 }
 
-type Pt = { x: number; y: number };
+export type Pt = { x: number; y: number };
 const STYLE: Record<DribbleMove, 'zigzag' | 'wave' | 'coil'> = { regate: 'zigzag', conduccion: 'wave', proteccion: 'coil' };
 
 /** 印の形を1つ描く */
@@ -126,7 +126,7 @@ function markLayer(marks: Mark[]): string {
 }
 
 /** マスの中に n 個の点を等間隔に並べる（1個なら中心） */
-function zoneSlots(z: Zone, n: number): Pt[] {
+export function zoneSlots(z: Zone, n: number): Pt[] {
   const r = zoneRect(z);
   if (n <= 1) return [{ x: r.x + r.w / 2, y: r.y + r.h / 2 }];
   const cols = Math.ceil(Math.sqrt(n * 1.3));
@@ -141,7 +141,7 @@ function zoneSlots(z: Zone, n: number): Pt[] {
  * 矢印の始点と終点を、マスの中に散らした位置に割り当てる。
  * 交差が減るよう、始点は行き先の上下の順、終点は出どころの上下の順に並べる
  */
-function spread(arrows: Arrow[]): { p: Pt; q: Pt }[] {
+export function spread(arrows: Arrow[]): { p: Pt; q: Pt }[] {
   const assign = (key: (a: Arrow) => Zone, other: (a: Arrow) => Zone) => {
     const groups = new Map<string, number[]>();
     arrows.forEach((a, i) => {
@@ -166,7 +166,7 @@ function spread(arrows: Arrow[]): { p: Pt; q: Pt }[] {
  * p から q へ向かうドリブルの線。tail が正なら、最後をまっすぐにして矢じりの向きをそろえる。
  * zigzag＝角のあるジグザグ、wave＝なめらかな波、coil＝くるくる巻く線
  */
-function dribblePath(style: 'zigzag' | 'wave' | 'coil', p: Pt, q: Pt, tail: number): string {
+export function dribblePath(style: 'zigzag' | 'wave' | 'coil', p: Pt, q: Pt, tail: number): string {
   const dx = q.x - p.x;
   const dy = q.y - p.y;
   const len = Math.hypot(dx, dy);
