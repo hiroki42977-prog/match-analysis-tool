@@ -117,3 +117,25 @@ test('opening a version-1 database keeps everything', async () => {
   expect((await db.listEvents('m1')).map((e) => e.id)).toEqual(['old-e']);
   expect(await db.getMatchReport('m1')).toEqual(emptyMatchReport('m1'));
 });
+
+const within = <T>(p: Promise<T>, ms = 1000) => Promise.race([p, new Promise<'timeout'>((ok) => setTimeout(() => ok('timeout'), ms))]);
+
+test('an old connection left open is reported instead of hanging silently', async () => {
+  const name = `blocked-${++n}`;
+  const old = await openDB(name, 1, { upgrade(d) { d.createObjectStore('teams', { keyPath: 'id' }); } });
+  let blocked!: () => void;
+  const wasBlocked = new Promise<'blocked'>((ok) => { blocked = () => ok('blocked'); });
+  const opening = db.openDb(name, { onBlocked: blocked });
+  expect(await within(wasBlocked)).toBe('blocked');
+  old.close();
+  await opening;
+});
+
+test('this connection steps aside when a newer version opens', async () => {
+  const name = `newer-${++n}`;
+  let asked = false;
+  await db.openDb(name, { onVersionChange: () => { asked = true; } });
+  const newer = within(openDB(name, 3));
+  expect(await newer).not.toBe('timeout');
+  expect(asked).toBe(true);
+});

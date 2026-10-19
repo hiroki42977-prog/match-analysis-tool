@@ -14,7 +14,14 @@ export interface QueuedOp {
 
 let dbp: Promise<IDBPDatabase> | null = null;
 
-export async function openDb(name = 'match-analysis'): Promise<void> {
+export interface OpenHooks {
+  /** 古い版の画面（別のタブなど）が開いたままで、版を上げられずに待っているとき */
+  onBlocked?: () => void;
+  /** 新しい版の画面が開こうとして、この接続を閉じたとき（画面を読み込み直す） */
+  onVersionChange?: () => void;
+}
+
+export async function openDb(name = 'match-analysis', hooks: OpenHooks = {}): Promise<void> {
   // 版2：PDF 用のレポートの保存場所を足した。版1のデータには手を付けない
   dbp = openDB(name, 2, {
     upgrade(d, oldVersion) {
@@ -31,6 +38,12 @@ export async function openDb(name = 'match-analysis'): Promise<void> {
         d.createObjectStore('matchReports', { keyPath: 'matchId' });
         d.createObjectStore('playerReports', { keyPath: ['matchId', 'playerId'] });
       }
+    },
+    blocked() { hooks.onBlocked?.(); },
+    // 新しい版を待たせないよう、自分から閉じる
+    blocking() {
+      void dbp?.then((d) => d.close());
+      hooks.onVersionChange?.();
     },
   });
   await dbp;

@@ -12,8 +12,25 @@ import { resultsScreen } from './ui/screens/results';
 import { rosterScreen } from './ui/screens/roster';
 import { settingsScreen } from './ui/screens/settings';
 
+/** 画面が白いままにならないよう、開けないときは理由と次の手を出す */
+function notice(text: string) {
+  const app = document.getElementById('app')!;
+  const p = document.createElement('p');
+  p.className = 'error';
+  p.textContent = text;
+  app.replaceChildren(p);
+}
+
 void (async () => {
-  await db.openDb();
+  try {
+    await db.openDb('match-analysis', {
+      onBlocked: () => notice('前の版のアプリが別のタブで開いたままです。ほかのタブを閉じると、自動で開きます。'),
+      onVersionChange: () => location.reload(),
+    });
+  } catch (e) {
+    notice(`記録を開けませんでした。もう一度読み込んでください（${e instanceof Error ? e.message : e}）`);
+    return;
+  }
   route('/', homeScreen);
   route('/roster', rosterScreen);
   route('/settings', settingsScreen);
