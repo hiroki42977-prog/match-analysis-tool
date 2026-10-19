@@ -3,7 +3,7 @@ import { computeStats, radarValues } from '../domain/stats';
 import type { Match, PlayEvent, Player, Team } from '../domain/types';
 import { drawSvg } from '../pitch/png';
 import { SHEET } from '../pitch/perspective';
-import { sheetPitchSvg } from '../pitch/sheet';
+import { LEGEND_SIZE, sheetLegendSvg, sheetPitchSvg } from '../pitch/sheet';
 import { sheetFigures } from './build';
 import { radarSvg } from './radar';
 import { statBlocks, type StatBlock } from './sheetTables';
@@ -84,9 +84,13 @@ async function picture(ctx: Ctx, src: string | undefined, x: number, y: number, 
 /** 1ページ目：チーム名、1st・2nd の図、コメント、次節の課題 */
 export async function drawPage1(ctx: Ctx, d: ReportPdfInput): Promise<void> {
   text(ctx, d.team.name, PAGE.w / 2, 85, { size: 40, bold: true, align: 'center' });
-  const pw = 1240;
+  // 印の意味は、チーム名と 1st の図のあいだに1回だけ絵で示す
+  const lw = 1334;
+  const lh = lw * LEGEND_SIZE.h / LEGEND_SIZE.w;
+  await drawSvg(ctx, sheetLegendSvg(), (PAGE.w - lw) / 2, 120, lw, lh);
+  const pw = 1180;
   const ph = pw * SHEET.h / SHEET.w;
-  let y = 120;
+  let y = 120 + lh + 15;
   for (const fig of sheetFigures(d.events)) {
     await drawSvg(ctx, sheetPitchSvg(fig.svg), (PAGE.w - pw) / 2, y, pw, ph);
     y += ph + 10;

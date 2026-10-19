@@ -41,6 +41,11 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
   await expect(page.locator('#map-1H .sheet-mark[data-icon="ball"]')).toHaveCount(1);
   await expect(page.locator('#map-1H .sheet-mark[data-icon="shot-on"]')).toHaveCount(1);
   await expect(page.locator('#map-2H .arrow')).toHaveCount(0);
+  // 凡例は 1st の上に1回だけ
+  await expect(page.locator('.figures .sheet-legend')).toHaveCount(1);
+  await expect(page.locator('.figures .sheet-legend .legend-item')).toHaveCount(9);
+  const legendY = (await page.locator('.sheet-legend').boundingBox())!.y;
+  expect(legendY).toBeLessThan((await page.locator('#map-1H').boundingBox())!.y);
 
   // 図は画面の横幅いっぱい（iPad 横向き 1180px で 1000px 以上）
   for (const id of ['#map-1H', '#heatmap']) {

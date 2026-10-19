@@ -92,3 +92,25 @@ test('zone of lane 1 is on the left, col 6 at the top', () => {
   expect(+m[1]).toBeLessThan(60);
   expect(+m[2]).toBeLessThan(38);
 });
+
+import { sheetLegendSvg } from '../src/pitch/sheet';
+
+test('legend: every mark in one row, drawn like on the pitch', () => {
+  const svg = sheetLegendSvg();
+  const items = [...svg.matchAll(/<g class="legend-item" data-icon="([^"]+)"/g)].map((m) => m[1]);
+  expect(items).toEqual(['pass', 'conduccion', 'L', 'P', 'ball', '1', '空', 'shot-on', 'shot-off']);
+  for (const label of ['パス', 'ドリブル', 'レガーテ', 'プロテクション', '奪取', '1対1', '空中戦', '枠内', '枠外', '成功', '失敗']) {
+    expect(svg).toContain(`>${label}</text>`);
+  }
+  // 成功の色（青・緑）と失敗の色（赤）の見本
+  expect(svg).toMatch(/class="swatch-ok"[^>]*fill="#1f3dff"/);
+  expect(svg).toMatch(/class="swatch-ok"[^>]*fill="#1fd655"/);
+  expect(svg).toMatch(/class="swatch-ng"[^>]*fill="#ff2a2a"/);
+  // ピッチの印と同じ描き方（丸に文字は白い中に青のふち）
+  expect(svg).toMatch(/data-icon="L"[^>]*>.*?<circle[^>]*fill="#ffffff"[^>]*stroke="#1f3dff"/);
+});
+
+test('legend items do not overlap', () => {
+  const xs = [...sheetLegendSvg().matchAll(/<g class="legend-item"[^>]*data-x="([\d.]+)" data-w="([\d.]+)"/g)].map((m) => [+m[1], +m[2]]);
+  for (let i = 1; i < xs.length; i++) expect(xs[i][0]).toBeGreaterThanOrEqual(xs[i - 1][0] + xs[i - 1][1]);
+});

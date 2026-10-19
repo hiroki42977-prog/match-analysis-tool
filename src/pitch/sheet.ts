@@ -164,3 +164,54 @@ export function sheetPitchSvg(o: SheetPitchOptions): string {
     + `<text x="2" y="8" font-size="5" font-weight="500" fill="${INK}">${o.label}</text>`
     + `${markings()}${zoneLines()}${arrowLayer(o.arrows)}${markLayer(o.marks)}</svg>`;
 }
+
+/** 凡例の1つ分。kind はピッチの印と同じ描き方を選ぶ */
+type LegendKind = 'pass' | 'conduccion' | SheetIcon;
+const LEGEND_ITEMS: [LegendKind, string][] = [
+  ['pass', 'パス'], ['conduccion', 'ドリブル'], ['L', 'レガーテ'], ['P', 'プロテクション'], ['ball', '奪取'],
+  ['1', '1対1'], ['空', '空中戦'], ['shot-on', '枠内'], ['shot-off', '枠外'],
+];
+const LF = 2.6;
+// 文字の幅の目安（全角は1文字、半角は0.6文字分）
+const textW = (s: string) => [...s].reduce((w, c) => w + (c.charCodeAt(0) < 0x100 ? 0.6 : 1) * LF, 0);
+
+function legendGlyph(kind: LegendKind, x: number, y: number): { svg: string; w: number } {
+  if (kind === 'pass' || kind === 'conduccion') {
+    const p = { x, y };
+    const q = { x: x + 6, y };
+    const c = kind === 'pass' ? PASS_OK : BLUE;
+    const paint = `fill="none" stroke="${c}" stroke-width=".35" stroke-linecap="round" marker-end="url(#${markerId(c)})"`;
+    return { w: 6, svg: kind === 'pass' ? `<line x1="${x}" y1="${y}" x2="${q.x}" y2="${y}" ${paint}/>` : `<path d="${wavePath(p, q, 1)}" ${paint} stroke-linejoin="round"/>` };
+  }
+  return { w: 3.2, svg: icon({ zone: { lane: 1, col: 1 }, icon: kind, success: true }, x + 1.6, y) };
+}
+
+/** 印の意味を、ピッチの印と同じ絵で1行に並べた凡例。文字は短い名前だけ */
+function buildLegend(): { svg: string; w: number; h: number } {
+  const h = 6;
+  const y = h / 2;
+  let x = 1;
+  const parts: string[] = [];
+  for (const [kind, label] of LEGEND_ITEMS) {
+    const g = legendGlyph(kind, x, y);
+    const w = g.w + 0.8 + textW(label);
+    parts.push(`<g class="legend-item" data-icon="${kind}" data-x="${f(x)}" data-w="${f(w)}">${g.svg}<text x="${f(x + g.w + 0.8)}" y="${f(y + LF * 0.36)}" font-size="${LF}" fill="${INK}">${label}</text></g>`);
+    x += w + 2.4;
+  }
+  // 色の見本：青・緑＝成功、赤＝失敗
+  x += 0.6;
+  parts.push(`<rect class="swatch-ok" x="${f(x)}" y="${f(y - 1)}" width="2" height="2" fill="${BLUE}"/><rect class="swatch-ok" x="${f(x + 2.2)}" y="${f(y - 1)}" width="2" height="2" fill="${PASS_OK}"/>`
+    + `<text x="${f(x + 5)}" y="${f(y + LF * 0.36)}" font-size="${LF}" fill="${INK}">成功</text>`);
+  x += 5 + textW('成功') + 2.4;
+  parts.push(`<rect class="swatch-ng" x="${f(x)}" y="${f(y - 1)}" width="2" height="2" fill="${FAIL}"/><text x="${f(x + 2.8)}" y="${f(y + LF * 0.36)}" font-size="${LF}" fill="${INK}">失敗</text>`);
+  x += 2.8 + textW('失敗') + 1;
+  const w = f(x);
+  return { w, h, svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" font-family="-apple-system, 'Hiragino Sans', sans-serif">${defs()}${parts.join('')}</svg>` };
+}
+
+const LEGEND = buildLegend();
+/** 凡例の縦横の大きさ（viewBox） */
+export const LEGEND_SIZE = { w: LEGEND.w, h: LEGEND.h };
+export function sheetLegendSvg(): string {
+  return LEGEND.svg;
+}

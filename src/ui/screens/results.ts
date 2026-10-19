@@ -1,7 +1,7 @@
 import { computeStats, rate, zoneCells, type Count, type HalfStats } from '../../domain/stats';
 import type { PlayEvent, PlayType, Player } from '../../domain/types';
 import { pitchSvg } from '../../pitch/render';
-import { sheetPitchSvg } from '../../pitch/sheet';
+import { sheetLegendSvg, sheetPitchSvg } from '../../pitch/sheet';
 import { buildReports, sheetFigures } from '../../report/build';
 import { buildReportPdf, pdfFileName } from '../../report/pdf';
 import { eventRow, eventsToCsv } from '../../report/rows';
@@ -140,7 +140,8 @@ export async function resultsScreen(root: HTMLElement, params: Record<string, st
       // 集計表を上に、図はその下に1枚ずつ横幅いっぱいで並べる
       h('section', {}, h('h2', {}, '集計'), statsTable(mine)),
       h('section', { class: 'figures' },
-        // 見本の資料と同じく、前半（1st）・後半（2nd）の2枚を縦に並べる
+        // 見本の資料と同じく、前半（1st）・後半（2nd）の2枚を縦に並べる。印の意味は上に1回だけ絵で示す
+        h('div', { class: 'sheet-legend' }, svgEl(sheetLegendSvg())),
         ...sheetFigures(mine).map((fig) => h('div', { id: `map-${fig.key}`, class: 'figure sheet' }, svgEl(sheetPitchSvg(fig.svg)))),
           h('h2', {}, '場所ごとの本数'),
           h('div', { id: 'heatmap-tabs', class: 'seg' }, ...HEAT_TABS.map((t) => h('button', { class: t.type === heatType ? 'on' : '', onclick: () => { heatType = t.type; paint(); } }, t.label))),
