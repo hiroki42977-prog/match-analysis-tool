@@ -3,7 +3,7 @@ import type { PlayEvent, PlayType, Player } from '../../domain/types';
 import { pitchSvg } from '../../pitch/render';
 import { sheetPitchSvg } from '../../pitch/sheet';
 import { buildReports, sheetFigures } from '../../report/build';
-import { pageHeading, pdfFileName, buildFiguresPdf } from '../../report/pdf';
+import { buildReportPdf, pdfFileName } from '../../report/pdf';
 import { eventRow, eventsToCsv } from '../../report/rows';
 import * as db from '../../storage/db';
 import { h, svgEl } from '../dom';
@@ -98,12 +98,17 @@ export async function resultsScreen(root: HTMLElement, params: Record<string, st
   // 今選んでいる選手1人分の図を、1ページ1枚の PDF にする。
   // iPad では共有シートはボタンを押した直後にしか開けないので、作り終わったら「PDF を保存」を押してもらう
   const pdf = async () => {
-    const p = players.find((x) => x.id === current);
-    if (!p) return;
+    // レポート入力で写真やエンブレムを変えていることがあるので、読み直す
+    const p = (await db.listPlayers(m.teamId)).find((x) => x.id === current);
+    const team = (await db.listTeams()).find((t) => t.id === m.teamId);
+    if (!p || !team) return;
     pdfBtn.setAttribute('disabled', '');
     reportMsg.textContent = 'PDF を作成中…';
     try {
-      const blob = await buildFiguresPdf(sheetFigures(events.filter((e) => e.playerId === p.id)), pageHeading(m, p));
+      const blob = await buildReportPdf({
+        match: m, player: p, team, events: events.filter((e) => e.playerId === p.id),
+        matchReport: await db.getMatchReport(m.id), playerReport: await db.getPlayerReport(m.id, p.id),
+      });
       const name = pdfFileName(m, p);
       const save = h('button', { class: 'primary', onclick: () => {
         saveFile(blob, name, 'application/pdf').catch((e) => {

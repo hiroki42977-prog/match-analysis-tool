@@ -69,6 +69,8 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
   const pdfText = readFileSync((await pdf.path())!, 'latin1');
   expect(pdfText.startsWith('%PDF')).toBe(true);
   expect(pdfText.match(/\/Type \/Page[^s]/g)).toHaveLength(2);
+  // A4縦（幅 595 × 高さ 842 ポイント）
+  expect(pdfText).toMatch(/\/MediaBox \[0 0 595\.\d+ 841\.\d+\]/);
 
   // レポート作成
   await page.getByRole('button', { name: 'レポート作成' }).tap();
@@ -82,4 +84,16 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
     expect(r.stats.values[19][0]).toBe('パス成功');
     expect(r.statsTabName).toMatch(/^\d+\/\d+ vs テストFC スタッツ$/);
   }
+});
+
+test('pdf can be made with no second-half records and no report input', async ({ page }) => {
+  await setupTeamAndMatch(page);
+  await openRecord(page, '#10 山田 太郎');
+  await record(page, 'パス', [[3, 2], [3, 4]]);
+  await page.getByRole('button', { name: '結果を見る' }).tap();
+  await page.getByRole('button', { name: 'PDF 書き出し' }).tap();
+  const [pdf] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'PDF を保存' }).tap()]);
+  const pdfText = readFileSync((await pdf.path())!, 'latin1');
+  expect(pdfText.match(/\/Type \/Page[^s]/g)).toHaveLength(2);
+  expect(pdfText).toMatch(/\/MediaBox \[0 0 595\.\d+ 841\.\d+\]/);
 });
