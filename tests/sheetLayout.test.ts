@@ -44,7 +44,20 @@ test('images: keys and places', () => {
   expect(L.frameImages.map((i) => i.key)).toEqual(['frame:field']);
   expect(L.toolImages.map((i) => [i.key, i.col, i.row])).toEqual([
     ['tool:radar-1H', 1, 20], ['tool:radar-2H', 4, 20], ['tool:radar-all', 8, 20],
-    ['tool:map-1st', 1, 54], ['tool:legend', 1, 55], ['tool:map-2nd', 1, 56],
+    ['tool:map-1st', 1, 54], ['tool:legend', 2, 55], ['tool:map-2nd', 1, 56],
   ]);
   expect(L.toolImages.find((i) => i.key === 'tool:map-1st')).toMatchObject({ width: 720, height: 350, pngBase64: 'm1' });
+});
+
+test('images: offsetX stays inside the anchor column (under 72px)', () => {
+  for (const i of [...L.frameImages, ...L.toolImages]) {
+    expect(i.offsetX).toBeGreaterThanOrEqual(0);
+    expect(i.offsetX).toBeLessThan(72);
+  }
+  expect(L.toolImages.find((i) => i.key === 'tool:legend')?.col).toBe(2);
+});
+
+test('tool: table row labels are centered like the mockup', () => {
+  expect(at(L.tool, 'A25')?.style.align).toBeUndefined();
+  expect(at(L.tool, 'D25')?.style.align).toBeUndefined();
 });

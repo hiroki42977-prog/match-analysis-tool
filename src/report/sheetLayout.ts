@@ -101,7 +101,7 @@ function buildTool(stats: PlayerStats): SheetCell[] {
     b.rows.forEach((row, k) => {
       const r = top + 3 + k;
       const st: CellStyle = k % 2 === 0 ? { bg: STRIPE } : {};
-      const lab: CellStyle = { ...st, align: 'left', ...(row.label.length >= 7 ? { size: 8 } : {}) };
+      const lab: CellStyle = { ...st, ...(row.label.length >= 7 ? { size: 8 } : {}) };
       add(a1(1, r), lab, row.label);
       add(a1(2, r), st, row.success[0]);
       add(a1(3, r), st, row.success[1]);
@@ -121,8 +121,9 @@ function buildTool(stats: PlayerStats): SheetCell[] {
 }
 
 export function buildSheetLayout(stats: PlayerStats, png: SheetPngs): SheetLayout {
+  // 左のずれが列の幅（72px）を超えないよう、超えた分は右の列に置き直す
   const img = (key: string, col: number, row: number, offsetX: number, offsetY: number, width: number, height: number, pngBase64: string): SheetImage =>
-    ({ key, col, row, offsetX, offsetY, width, height, pngBase64 });
+    ({ key, col: col + Math.floor(offsetX / 72), row, offsetX: offsetX % 72, offsetY, width, height, pngBase64 });
   const lw = Math.round((19 * LEGEND_SIZE.w) / LEGEND_SIZE.h);
   return {
     version: 1,
