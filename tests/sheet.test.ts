@@ -114,3 +114,30 @@ test('legend items do not overlap', () => {
   const xs = [...sheetLegendSvg().matchAll(/<g class="legend-item"[^>]*data-x="([\d.]+)" data-w="([\d.]+)"/g)].map((m) => [+m[1], +m[2]]);
   for (let i = 1; i < xs.length; i++) expect(xs[i][0]).toBeGreaterThanOrEqual(xs[i - 1][0] + xs[i - 1][1]);
 });
+
+test('green ground: grass trapezoid, white lines, white pass arrows', () => {
+  const z = (lane: number, col: number) => ({ lane, col });
+  const svg = sheetPitchSvg({ label: '1st', marks: [], arrows: [
+    { from: z(3, 2), to: z(3, 4), kind: 'pass', success: true },
+    { from: z(2, 2), to: z(2, 4), kind: 'pass', success: false },
+  ] }, 'green');
+  expect(svg).toContain('fill="#2f8f4e"');
+  expect(svg).toMatch(/<line class="arrow" data-kind="pass" data-ok="1"[^>]*stroke="#ffffff"/);
+  expect(svg).toMatch(/<line class="arrow" data-kind="pass" data-ok="0"[^>]*stroke="#ff2a2a"/);
+  expect(svg).toMatch(/class="zone-line"[^>]*stroke="#ffffff"/);
+  expect(svg).not.toContain('#1fd655');
+});
+
+test('white ground stays the same as before', () => {
+  const o = { label: '2nd' as const, arrows: [], marks: [] };
+  expect(sheetPitchSvg(o)).toBe(sheetPitchSvg(o, 'white'));
+  expect(sheetPitchSvg(o)).not.toContain('#2f8f4e');
+});
+
+test('green legend: grass background, white text, white pass glyph', () => {
+  const svg = sheetLegendSvg('green');
+  expect(svg).toMatch(/<rect[^>]*fill="#2f8f4e"/);
+  expect(svg).toMatch(/fill="#ffffff">パス</);
+  expect(svg).not.toContain('#1fd655');
+  expect(sheetLegendSvg()).not.toContain('#2f8f4e');
+});
