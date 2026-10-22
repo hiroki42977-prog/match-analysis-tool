@@ -128,18 +128,17 @@ function ball(cx: number, cy: number, c: string): string {
     + inner.map(([x, y], i) => `<line x1="${f(x)}" y1="${f(y)}" x2="${f(outer[i][0])}" y2="${f(outer[i][1])}" stroke="${c}" stroke-width=".2"/>`).join('');
 }
 
-function icon(m: SheetMark, cx: number, cy: number, ground: Ground = 'white'): string {
+function icon(m: SheetMark, cx: number, cy: number): string {
   const c = m.success ? BLUE : FAIL;
-  const ink = lineColor(ground);
   switch (m.icon) {
     case 'ball':
       return ball(cx, cy, m.success ? INK : FAIL);
     case 'shot-on':
-      return `<circle cx="${f(cx)}" cy="${f(cy)}" r="1" fill="none" stroke="${ink}" stroke-width=".35"/>`;
+      return `<circle cx="${f(cx)}" cy="${f(cy)}" r="1" fill="none" stroke="${INK}" stroke-width=".35"/>`;
     case 'shot-off': {
       const k = 0.9;
-      return `<line x1="${f(cx - k)}" y1="${f(cy - k)}" x2="${f(cx + k)}" y2="${f(cy + k)}" stroke="${ink}" stroke-width=".35"/>`
-        + `<line x1="${f(cx - k)}" y1="${f(cy + k)}" x2="${f(cx + k)}" y2="${f(cy - k)}" stroke="${ink}" stroke-width=".35"/>`;
+      return `<line x1="${f(cx - k)}" y1="${f(cy - k)}" x2="${f(cx + k)}" y2="${f(cy + k)}" stroke="${INK}" stroke-width=".35"/>`
+        + `<line x1="${f(cx - k)}" y1="${f(cy + k)}" x2="${f(cx + k)}" y2="${f(cy - k)}" stroke="${INK}" stroke-width=".35"/>`;
     }
     default:
       return `<circle cx="${f(cx)}" cy="${f(cy)}" r="1.5" fill="#ffffff" stroke="${c}" stroke-width=".25"/>`
@@ -148,7 +147,7 @@ function icon(m: SheetMark, cx: number, cy: number, ground: Ground = 'white'): s
 }
 
 /** 印をマスごとにまとめて、マスの中に散らして置く */
-function markLayer(marks: SheetMark[], ground: Ground): string {
+function markLayer(marks: SheetMark[]): string {
   const groups = new Map<string, SheetMark[]>();
   for (const m of marks) {
     const k = `${m.zone.lane}-${m.zone.col}`;
@@ -159,7 +158,7 @@ function markLayer(marks: SheetMark[], ground: Ground): string {
     const slots = zoneSlots(list[0].zone, list.length);
     list.forEach((m, i) => {
       const p = P(slots[i].x, slots[i].y);
-      out.push(`<g class="sheet-mark" data-icon="${m.icon}" data-ok="${m.success ? 1 : 0}" data-cx="${f(p.x)}" data-cy="${f(p.y)}">${icon(m, p.x, p.y, ground)}</g>`);
+      out.push(`<g class="sheet-mark" data-icon="${m.icon}" data-ok="${m.success ? 1 : 0}" data-cx="${f(p.x)}" data-cy="${f(p.y)}">${icon(m, p.x, p.y)}</g>`);
     });
   }
   return out.join('');
@@ -175,7 +174,7 @@ export function sheetPitchSvg(o: SheetPitchOptions, ground: Ground = 'white'): s
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SHEET.w} ${SHEET.h}" font-family="-apple-system, 'Hiragino Sans', sans-serif">`
     + `${defs(ground)}<rect x="0" y="0" width="${SHEET.w}" height="${SHEET.h}" fill="#ffffff"/>${grass}`
     + `<text x="2" y="8" font-size="5" font-weight="500" fill="${INK}">${o.label}</text>`
-    + `${markings(ground)}${zoneLines(ground)}${arrowLayer(o.arrows, ground)}${markLayer(o.marks, ground)}</svg>`;
+    + `${markings(ground)}${zoneLines(ground)}${arrowLayer(o.arrows, ground)}${markLayer(o.marks)}</svg>`;
 }
 
 /** 凡例の1つ分。kind はピッチの印と同じ描き方を選ぶ */
@@ -196,7 +195,7 @@ function legendGlyph(kind: LegendKind, x: number, y: number, ground: Ground): { 
     const paint = `fill="none" stroke="${c}" stroke-width=".35" stroke-linecap="round" marker-end="url(#${markerId(c)})"`;
     return { w: 6, svg: kind === 'pass' ? `<line x1="${x}" y1="${y}" x2="${q.x}" y2="${y}" ${paint}/>` : `<path d="${wavePath(p, q, 1)}" ${paint} stroke-linejoin="round"/>` };
   }
-  return { w: 3.2, svg: icon({ zone: { lane: 1, col: 1 }, icon: kind, success: true }, x + 1.6, y, ground) };
+  return { w: 3.2, svg: icon({ zone: { lane: 1, col: 1 }, icon: kind, success: true }, x + 1.6, y) };
 }
 
 /** 印の意味を、ピッチの印と同じ絵で1行に並べた凡例。文字は短い名前だけ */

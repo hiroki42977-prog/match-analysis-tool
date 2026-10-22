@@ -126,6 +126,9 @@ test('green ground: grass trapezoid, white lines, white pass arrows', () => {
   expect(svg).toMatch(/<line class="arrow" data-kind="pass" data-ok="0"[^>]*stroke="#ff2a2a"/);
   expect(svg).toMatch(/class="zone-line"[^>]*stroke="#ffffff"/);
   expect(svg).not.toContain('#1fd655');
+  // シュートの印は緑でも見本どおり黒のまま
+  const shot = sheetPitchSvg({ label: '1st', arrows: [], marks: [{ zone: z(3, 3), icon: 'shot-on', success: true }] }, 'green');
+  expect(shot).toMatch(/class="sheet-mark" data-icon="shot-on"[^>]*><circle[^>]*stroke="#111111"/);
 });
 
 test('white ground stays the same as before', () => {
