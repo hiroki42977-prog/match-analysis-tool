@@ -14,11 +14,14 @@ export function sheetNames(m: Match, p: Player, teamName: string): { playerFileN
   return { playerFileName: `#${p.number} ${p.name}（${teamName}）`, tabName: `${mm}/${dd} vs ${m.opponent}` };
 }
 
-/** 古い受け取り係（Apps Script）は buildSheet を知らないので、貼り替えが必要だと伝える */
+/** 古い受け取り係（Apps Script）は buildSheet を知らないので、貼り替えが必要だと伝える。
+ *  時間切れのときは返事が JSON でなく画面（HTML）になり、読めないエラーになるので言い換える */
 export function sheetError(error: string): string {
-  return error.includes('知らない操作です')
-    ? '受け取り係（Apps Script）の貼り替えが必要です。設置手順.md の「受け取り係を新しくする」を見てください'
-    : error;
+  if (error.includes('知らない操作です')) return '受け取り係（Apps Script）の貼り替えが必要です。設置手順.md の「受け取り係を新しくする」を見てください';
+  if (/JSON|did not match the expected pattern|Unexpected token/.test(error)) {
+    return '受け取り係の処理に時間がかかりすぎました。少し待ってから、もう一度「レポート作成」を押してください';
+  }
+  return error;
 }
 
 export interface SheetSvg { svg: string; w: number; h: number; scale: number }

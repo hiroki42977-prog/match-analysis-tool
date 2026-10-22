@@ -51,6 +51,13 @@ test('old receiver error is explained', () => {
   expect(sheetError('合言葉が違います')).toBe('合言葉が違います');
 });
 
+test('a non-JSON reply (Apps Script timed out) is explained', () => {
+  const slow = '受け取り係の処理に時間がかかりすぎました。少し待ってから、もう一度「レポート作成」を押してください';
+  expect(sheetError('The string did not match the expected pattern.')).toBe(slow);
+  expect(sheetError("Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON")).toBe(slow);
+  expect(sheetError('通信できませんでした')).toBe('通信できませんでした');
+});
+
 test('sheet svgs: green maps, three radars, under 1M pixels', () => {
   const evs = [ev({ half: '1H', type: 'pass', success: true })];
   const s = sheetSvgs(evs, computeStats(evs));
