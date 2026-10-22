@@ -18,3 +18,7 @@ test('radar: null is drawn as the center', () => {
   const value = pts(svg.match(/<polygon class="value" points="([^"]+)"/)![1]);
   expect(new Set(value.map((p) => p.join(','))).size).toBe(1);
 });
+
+test('radar: whole-match title', () => {
+  expect(radarSvg({ pass: 50, dribble: 50, shot: 50, defense: 50 }, '全体', '#f39c12')).toContain('>全体<');
+});

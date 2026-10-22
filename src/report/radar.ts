@@ -14,7 +14,7 @@ const f = (n: number) => +n.toFixed(2);
 const points = (k: (i: number) => number) => AXES.map((a, i) => `${f(CX + a.dx * R * k(i))},${f(CY + a.dy * R * k(i))}`).join(' ');
 
 /** 前半・後半のレーダーチャート（0〜100%、20% ごとの目盛り）。値が無い軸は真ん中 */
-export function radarSvg(v: RadarValues, title: '前半' | '後半', color: string): string {
+export function radarSvg(v: RadarValues, title: '前半' | '後半' | '全体', color: string): string {
   const grid = [20, 40, 60, 80, 100].map((lv) => `<polygon class="grid" data-level="${lv}" points="${points(() => lv / 100)}" fill="none" stroke="#d0d0d0" stroke-width=".3"/>`).join('');
   const ticks = [20, 40, 60, 80, 100].map((lv) => `<text x="${f(CX - 1)}" y="${f(CY - R * lv / 100 + 1)}" font-size="2.4" fill="#888888" text-anchor="end">${lv}%</text>`).join('');
   const spokes = AXES.map((a) => `<line x1="${CX}" y1="${CY}" x2="${f(CX + a.dx * R)}" y2="${f(CY + a.dy * R)}" stroke="#d0d0d0" stroke-width=".3"/>`).join('');
