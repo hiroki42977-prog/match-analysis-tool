@@ -40,6 +40,35 @@ test('resend keeps staff text and pictures, replaces only tool images', () => {
   expect(sh.liveImages().map((i: { key: string }) => i.key).sort()).toEqual(['', 'frame:field', 'tool:map-1st', 'tool:radar-1H']);
 });
 
+test('first build is retry-safe: a leftover half-made tab is replaced and renamed at the end', () => {
+  const { renderSheet } = load();
+  const ss = fakeSpreadsheet();
+  // 1回目は途中で失敗（読めない範囲）→ 本来の名前のタブはできず、（作成中）だけが残る
+  expect(() => renderSheet(ss, 'T', { ...layout, tool: [{ range: '??', value: 'x', style: {} }] })).toThrow();
+  expect(ss.getSheetByName('T')).toBeFalsy();
+  expect(ss.getSheetByName('T（作成中）')).toBeTruthy();
+  // 2回目：残りを消して作り直し、最後に名前を付ける
+  expect(renderSheet(ss, 'T', layout)).toBe(true);
+  const sh = ss.getSheetByName('T');
+  expect(sh.values.A2).toBe('写真');
+  expect(sh.values.A22).toBe('パス成功率');
+  expect(ss.getSheets().map((s: { getName(): string }) => s.getName())).toEqual(['T']);
+});
+
+test('resend clears old tool cells, unmerges the tool range and leaves the frame alone', () => {
+  const { renderSheet } = load();
+  const ss = fakeSpreadsheet();
+  renderSheet(ss, 'T', { ...layout, tool: [...layout.tool, { range: 'A30', value: 'old', style: {} }] });
+  const sh = ss.getSheetByName('T');
+  sh.values.A2 = 'X';                      // 担当者が枠の文字を書き換えた
+  sh.calls = [];
+  renderSheet(ss, 'T', layout);
+  expect(sh.values.A30).toBeUndefined();
+  expect(sh.values.A2).toBe('X');
+  expect(sh.calls.some((c: { fn: string; args: unknown[] }) => c.fn === 'breakApart' && c.args[0] === 'A22:J53')).toBe(true);
+  expect(sh.calls.some((c: { fn: string; args: unknown[] }) => String(c.args[0]).startsWith('A2:'))).toBe(false);
+});
+
 test('version mismatch writes nothing', () => {
   const { buildSheet } = load();
   expect(() => buildSheet({ playerFileName: 'x', tabName: 'T', layout: { ...layout, version: 2 } })).toThrow('版が合いません');

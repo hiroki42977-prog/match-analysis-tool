@@ -134,24 +134,35 @@ function buildSheet(req) {
 }
 
 // 新しく作ったら true。既にあるタブは、ツールの表の範囲と tool: の画像だけを入れ替える
+// 初めて作るときは「（作成中）」の名前で全部作り、最後に名前を付ける（途中で止まっても、やり直せば作り直せる）
 function renderSheet(ss, tabName, layout) {
   let sh = ss.getSheetByName(tabName);
-  const isNew = !sh;
-  if (isNew) {
-    sh = ss.insertSheet(tabName, ss.getSheets().length);
-    sh.setHiddenGridlines(true);
-    layout.colWidths.forEach(function (w, i) { sh.setColumnWidth(i + 1, w); });
-    layout.rowHeights.forEach(function (h, i) { sh.setRowHeightsForced(i + 1, 1, h); });
-    layout.frame.forEach(function (c) { applyCell(sh, c); });
-    layout.frameImages.forEach(function (im) { placeImage(sh, im); });
+  if (sh) {
+    sh.getRange(layout.toolRange).breakApart().clearContent();
+    putTool(sh, layout);
+    return false;
   }
-  sh.getRange(layout.toolRange).clearContent();
+  const temp = tabName + '（作成中）';
+  const left = ss.getSheetByName(temp);
+  if (left) ss.deleteSheet(left);
+  sh = ss.insertSheet(temp, ss.getSheets().length);
+  sh.setHiddenGridlines(true);
+  layout.colWidths.forEach(function (w, i) { sh.setColumnWidth(i + 1, w); });
+  layout.rowHeights.forEach(function (h, i) { sh.setRowHeightsForced(i + 1, 1, h); });
+  layout.frame.forEach(function (c) { applyCell(sh, c); });
+  layout.frameImages.forEach(function (im) { placeImage(sh, im); });
+  putTool(sh, layout);
+  sh.setName(tabName);
+  return true;
+}
+
+// ツールの表の中身と tool: の画像を入れる（前の tool: の画像は外す）
+function putTool(sh, layout) {
   layout.tool.forEach(function (c) { applyCell(sh, c); });
   sh.getImages().forEach(function (img) {
     if (String(img.getAltTextTitle() || '').indexOf('tool:') === 0) img.remove();
   });
   layout.toolImages.forEach(function (im) { placeImage(sh, im); });
-  return isNew;
 }
 
 function applyCell(sh, c) {

@@ -30,6 +30,7 @@ export class FakeSheet {
     this.calls.push({ fn, args });
   }
   getName() { return this.name; }
+  setName(name: string) { this.log('setName', [name]); this.name = name; return this; }
   setHiddenGridlines(v: boolean) { this.log('setHiddenGridlines', [v]); return this; }
   setColumnWidth(col: number, px: number) { this.log('setColumnWidth', [col, px]); return this; }
   setRowHeightsForced(row: number, n: number, px: number) { this.log('setRowHeightsForced', [row, n, px]); return this; }
@@ -40,6 +41,7 @@ export class FakeSheet {
     const style = (fn: string) => (...args: unknown[]) => { sh.log(fn, [a1, ...args]); return range; };
     const range = {
       merge: style('merge'),
+      breakApart: style('breakApart'),
       setBackground: style('setBackground'),
       setFontColor: style('setFontColor'),
       setFontWeight: style('setFontWeight'),
