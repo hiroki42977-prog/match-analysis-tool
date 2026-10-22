@@ -1,26 +1,27 @@
-import { computeStats } from '../domain/stats';
+import { computeStats, radarValues, type PlayerStats } from '../domain/stats';
 import type { Half, Match, PlayEvent, Player } from '../domain/types';
-import { sheetPitchSvg, type SheetArrow, type SheetIcon, type SheetMark, type SheetPitchOptions } from '../pitch/sheet';
-import { sheetPngBase64 } from '../pitch/png';
+import { LEGEND_SIZE, sheetLegendSvg, sheetPitchSvg, type SheetArrow, type SheetIcon, type SheetMark, type SheetPitchOptions } from '../pitch/sheet';
+import { positionFieldSvg, mapPanelSvg } from '../pitch/field';
+import { svgPngBase64 } from '../pitch/png';
+import { radarSvg } from './radar';
+import { buildSheetLayout, type SheetPngs } from './sheetLayout';
 import * as db from '../storage/db';
 import { postToScript } from '../sync/client';
-import { buildStatsSheet, type StatsSheet } from './layout';
 
-export interface ReportImage { label: string; pngBase64: string }
-export interface ReportPayload {
-  action: 'buildReport';
-  playerFileName: string;
-  statsTabName: string;
-  mapTabName: string;
-  stats: StatsSheet;
-  images: ReportImage[];
-}
-
-export function reportNames(m: Match, p: Player, teamName: string): Pick<ReportPayload, 'playerFileName' | 'statsTabName' | 'mapTabName'> {
+/** シートのファイル名（選手ごと）とタブ名（試合ごと） */
+export function sheetNames(m: Match, p: Player, teamName: string): { playerFileName: string; tabName: string } {
   const [, mm, dd] = m.date.split('-').map(Number);
-  const base = `${mm}/${dd} vs ${m.opponent}`;
-  return { playerFileName: `#${p.number} ${p.name}（${teamName}）`, statsTabName: `${base} スタッツ`, mapTabName: `${base} マップ` };
+  return { playerFileName: `#${p.number} ${p.name}（${teamName}）`, tabName: `${mm}/${dd} vs ${m.opponent}` };
 }
+
+/** 古い受け取り係（Apps Script）は buildSheet を知らないので、貼り替えが必要だと伝える */
+export function sheetError(error: string): string {
+  return error.includes('知らない操作です')
+    ? '受け取り係（Apps Script）の貼り替えが必要です。設置手順.md の「受け取り係を新しくする」を見てください'
+    : error;
+}
+
+export interface SheetSvg { svg: string; w: number; h: number; scale: number }
 
 const ICON: Record<string, SheetIcon> = {
   regate: 'L', proteccion: 'P', ball_recovery: 'ball', one_vs_one: '1', aerial: '空', on_target: 'shot-on', off_target: 'shot-off',
@@ -42,6 +43,24 @@ export function sheetFigures(events: PlayEvent[]): SheetFigure[] {
   });
 }
 
+/** シートに貼る7枚の図（SVG と PNG にする大きさ）。純粋な関数 */
+export function sheetSvgs(events: PlayEvent[], stats: PlayerStats): Record<keyof SheetPngs, SheetSvg> {
+  const [f1, f2] = sheetFigures(events);
+  const radar = (k: '1H' | '2H' | 'all', title: '前半' | '後半' | '全体', color: string): SheetSvg =>
+    ({ svg: radarSvg(radarValues(stats[k]), title, color), w: 210, h: 168, scale: 2 });
+  const map = (f: SheetFigure): SheetSvg =>
+    ({ svg: mapPanelSvg(`プレーマップ ${f.label}`, sheetPitchSvg(f.svg, 'green')), w: 720, h: 350, scale: 1.5 });
+  return {
+    radar1H: radar('1H', '前半', '#5bc0eb'),
+    radar2H: radar('2H', '後半', '#2ecc71'),
+    radarAll: radar('all', '全体', '#f39c12'),
+    map1st: map(f1),
+    map2nd: map(f2),
+    legend: { svg: sheetLegendSvg('green'), w: Math.round((19 * LEGEND_SIZE.w) / LEGEND_SIZE.h), h: 19, scale: 2 },
+    field: { svg: positionFieldSvg(), w: 286, h: 194, scale: 2 },
+  };
+}
+
 /** その試合で記録がある選手全員分のレポートを、1人ずつ Apps Script に送る */
 export async function buildReports(
   matchId: string,
@@ -61,20 +80,16 @@ export async function buildReports(
     const name = `#${p.number} ${p.name}`;
     onProgress(i, targets.length, name);
     const mine = events.filter((e) => e.playerId === p.id);
-    const title = `${name} ｜ ${m.date} vs ${m.opponent} ｜ ${m.format}人制`;
-    const images: ReportImage[] = [];
-    for (const fig of sheetFigures(mine)) {
-      images.push({ label: fig.label, pngBase64: await sheetPngBase64(sheetPitchSvg(fig.svg)) });
+    const svgs = sheetSvgs(mine, computeStats(mine));
+    const png = {} as SheetPngs;
+    for (const key of Object.keys(svgs) as (keyof SheetPngs)[]) {
+      const v = svgs[key];
+      png[key] = await svgPngBase64(v.svg, v.w, v.h, v.scale);
     }
-    const payload: ReportPayload = {
-      action: 'buildReport',
-      ...reportNames(m, p, team?.name ?? ''),
-      stats: buildStatsSheet(title, computeStats(mine)),
-      images,
-    };
+    const payload = { action: 'buildSheet', ...sheetNames(m, p, team?.name ?? ''), layout: buildSheetLayout(computeStats(mine), png) };
     const r = await postToScript(settings, payload);
     if (r.ok) ok++;
-    else failed.push({ name, error: r.error });
+    else failed.push({ name, error: sheetError(r.error) });
   }
   onProgress(targets.length, targets.length, '');
   return { ok, failed };

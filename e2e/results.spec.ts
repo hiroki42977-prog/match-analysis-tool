@@ -80,14 +80,14 @@ test('results: stats, heatmap, csv, report', async ({ page }) => {
   // レポート作成
   await page.getByRole('button', { name: 'レポート作成' }).tap();
   await expect(page.getByText('2人分のレポートを作りました')).toBeVisible({ timeout: 20_000 });
-  const reports = bodies.filter((b) => b.action === 'buildReport') as Record<string, any>[];
+  const reports = bodies.filter((b) => b.action === 'buildSheet') as Record<string, any>[];
   expect(reports).toHaveLength(2);
   expect(reports.map((r) => r.playerFileName).sort()).toEqual(['#10 山田 太郎（サンプルFC）', '#7 佐藤 一郎（サンプルFC）']);
   for (const r of reports) {
-    expect(r.images.map((i: { label: string }) => i.label)).toEqual(['1st', '2nd']);
-    for (const img of r.images) expect(img.pngBase64.startsWith('iVBOR')).toBe(true);
-    expect(r.stats.values[19][0]).toBe('パス成功');
-    expect(r.statsTabName).toMatch(/^\d+\/\d+ vs テストFC スタッツ$/);
+    expect(r.tabName).toMatch(/^\d+\/\d+ vs テストFC$/);
+    expect(r.layout.version).toBe(1);
+    expect(r.layout.toolImages).toHaveLength(6);
+    for (const img of [...r.layout.toolImages, ...r.layout.frameImages]) expect(img.pngBase64.startsWith('iVBOR')).toBe(true);
   }
 });
 

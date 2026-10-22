@@ -1,5 +1,7 @@
 import { expect, test } from 'vitest';
-import { sheetFigures } from '../src/report/build';
+import { sheetError, sheetFigures, sheetNames, sheetSvgs } from '../src/report/build';
+import { computeStats } from '../src/domain/stats';
+import type { Match, Player } from '../src/domain/types';
 import { ev } from './helpers';
 
 test('sheet figures: always 1st and 2nd', () => {
@@ -36,4 +38,24 @@ test('sheet figures: halves are split', () => {
   const [first, second] = sheetFigures([ev({ half: '1H' }), ev({ half: '2H' }), ev({ half: '2H' })]);
   expect(first.svg.arrows).toHaveLength(1);
   expect(second.svg.arrows).toHaveLength(2);
+});
+
+test('sheet names', () => {
+  const m = { date: '2026-10-19', opponent: 'テストFC' } as Match;
+  expect(sheetNames(m, { number: 10, name: '山田 太郎' } as Player, 'サンプルFC'))
+    .toEqual({ playerFileName: '#10 山田 太郎（サンプルFC）', tabName: '10/19 vs テストFC' });
+});
+
+test('old receiver error is explained', () => {
+  expect(sheetError('知らない操作です: buildSheet')).toContain('貼り替えが必要です');
+  expect(sheetError('合言葉が違います')).toBe('合言葉が違います');
+});
+
+test('sheet svgs: green maps, three radars, under 1M pixels', () => {
+  const evs = [ev({ half: '1H', type: 'pass', success: true })];
+  const s = sheetSvgs(evs, computeStats(evs));
+  expect(s.map1st.svg).toContain('>プレーマップ 1st<');
+  expect(s.map2nd.svg).toContain('#2f8f4e');      // 後半0件でも緑のピッチ
+  expect(s.radarAll.svg).toContain('>全体<');
+  for (const v of Object.values(s)) expect(v.w * v.scale * v.h * v.scale).toBeLessThan(1_000_000);
 });
