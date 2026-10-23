@@ -32,7 +32,10 @@ export class FakeSheet {
   getName() { return this.name; }
   setName(name: string) { this.log('setName', [name]); this.name = name; return this; }
   setHiddenGridlines(v: boolean) { this.log('setHiddenGridlines', [v]); return this; }
-  setColumnWidth(col: number, px: number) { this.log('setColumnWidth', [col, px]); return this; }
+  widths: Record<number, number> = {};
+  setColumnWidth(col: number, px: number) { this.log('setColumnWidth', [col, px]); this.widths[col] = px; return this; }
+  // 本物の新しいシートの列幅は 100px
+  getColumnWidth(col: number) { return this.widths[col] ?? 100; }
   setRowHeightsForced(row: number, n: number, px: number) { this.log('setRowHeightsForced', [row, n, px]); return this; }
 
   getRange(a1: string) {

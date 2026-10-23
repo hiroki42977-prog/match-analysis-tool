@@ -135,8 +135,13 @@ function buildSheet(req) {
 
 // 新しく作ったら true。既にあるタブは、ツールの表の範囲と tool: の画像だけを入れ替える
 // 初めて作るときは「（作成中）」の名前で全部作り、最後に名前を付ける（途中で止まっても、やり直せば作り直せる）
+// 形の違う（前の版の）タブがあれば、消さずに「（旧）」の名前にして残し、新しく作る
 function renderSheet(ss, tabName, layout) {
   let sh = ss.getSheetByName(tabName);
+  if (sh && !sameShape(sh, layout)) {
+    sh.setName(freeName(ss, tabName + '（旧'));
+    sh = null;
+  }
   if (sh) {
     sh.getRange(layout.toolRange).breakApart().clearContent();
     putTool(sh, layout);
@@ -154,6 +159,18 @@ function renderSheet(ss, tabName, layout) {
   putTool(sh, layout);
   sh.setName(tabName);
   return true;
+}
+
+// 列幅がすべて同じなら、同じ形で作ったタブとみなす
+function sameShape(sh, layout) {
+  return layout.colWidths.every(function (w, i) { return sh.getColumnWidth(i + 1) === w; });
+}
+
+// 「〇〇（旧）」が使われていれば「〇〇（旧2）」「〇〇（旧3）」…と空いている名前を返す
+function freeName(ss, base) {
+  let name = base + '）';
+  for (let n = 2; ss.getSheetByName(name); n++) name = base + n + '）';
+  return name;
 }
 
 // ツールの表の中身と tool: の画像を入れる（前の tool: の画像は外す）

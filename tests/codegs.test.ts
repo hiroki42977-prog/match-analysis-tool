@@ -73,3 +73,25 @@ test('version mismatch writes nothing', () => {
   const { buildSheet } = load();
   expect(() => buildSheet({ playerFileName: 'x', tabName: 'T', layout: { ...layout, version: 2 } })).toThrow('版が合いません');
 });
+
+test('a tab made with a different layout is kept as （旧） and a new tab is built', () => {
+  const { renderSheet } = load();
+  const ss = fakeSpreadsheet();
+  renderSheet(ss, 'T', layout);
+  const old = ss.getSheetByName('T');
+  old.values.C10 = '前の形に書いたメモ';
+  const next = { ...layout, colWidths: Array(20).fill(36), toolRange: 'A20:T51', tool: [{ range: 'A20:T20', value: '新しい表', style: {} }] };
+  expect(renderSheet(ss, 'T', next)).toBe(true);
+  expect(old.name).toBe('T（旧）');
+  expect(old.values.C10).toBe('前の形に書いたメモ');
+  expect(old.calls.some((c: { fn: string; args: unknown[] }) => c.fn === 'breakApart')).toBe(false);
+  const fresh = ss.getSheetByName('T');
+  expect(fresh).not.toBe(old);
+  expect(fresh.values.A20).toBe('新しい表');
+  expect(fresh.values.A2).toBe('写真');
+  // もう一度前の形のタブができても、名前がぶつからない
+  const again = ss.getSheetByName('T');
+  again.widths[1] = 72;
+  renderSheet(ss, 'T', next);
+  expect(again.name).toBe('T（旧2）');
+});
