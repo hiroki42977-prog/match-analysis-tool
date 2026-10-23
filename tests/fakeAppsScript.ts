@@ -36,6 +36,12 @@ export class FakeSheet {
   setColumnWidth(col: number, px: number) { this.log('setColumnWidth', [col, px]); this.widths[col] = px; return this; }
   // 本物の新しいシートの列幅は 100px
   getColumnWidth(col: number) { return this.widths[col] ?? 100; }
+  // 本物の DeveloperMetadata のまね（キーと値だけ）
+  meta: { key: string; value: string }[] = [];
+  addDeveloperMetadata(key: string, value: string) { this.meta.push({ key, value }); return this; }
+  getDeveloperMetadata() {
+    return this.meta.map((m) => ({ getKey: () => m.key, getValue: () => m.value, setValue: (v: string) => { m.value = v; } }));
+  }
   setRowHeightsForced(row: number, n: number, px: number) { this.log('setRowHeightsForced', [row, n, px]); return this; }
 
   getRange(a1: string) {

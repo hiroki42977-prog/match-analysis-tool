@@ -95,3 +95,34 @@ test('a tab made with a different layout is kept as （旧） and a new tab is b
   renderSheet(ss, 'T', next);
   expect(again.name).toBe('T（旧2）');
 });
+
+test('resend puts the row heights back even if someone resized the rows', () => {
+  const { renderSheet } = load();
+  const ss = fakeSpreadsheet();
+  renderSheet(ss, 'T', layout);
+  const sh = ss.getSheetByName('T');
+  sh.calls.length = 0;
+  expect(renderSheet(ss, 'T', layout)).toBe(false);
+  const heights = sh.calls.filter((c: { fn: string }) => c.fn === 'setRowHeightsForced');
+  expect(heights).toHaveLength(layout.rowHeights.length);
+});
+
+test('a tab whose frame is different (or unknown) is kept as （旧） and rebuilt in the new shape', () => {
+  const { renderSheet } = load();
+  const ss = fakeSpreadsheet();
+  renderSheet(ss, 'T', layout);
+  const old = ss.getSheetByName('T');
+  old.values.C10 = 'メモ';
+  const next = { ...layout, frame: [{ range: 'A2:B2', value: '写真', style: {} }], frameImages: [...layout.frameImages, { key: 'frame:magnet-blue-1', col: 10, row: 16, offsetX: 1, offsetY: 2, width: 16, height: 16, pngBase64: 'AA==' }] };
+  expect(renderSheet(ss, 'T', next)).toBe(true);
+  expect(old.name).toBe('T（旧）');
+  expect(old.values.C10).toBe('メモ');
+  const fresh = ss.getSheetByName('T');
+  expect(fresh.liveImages().map((i: { key: string }) => i.key)).toContain('frame:magnet-blue-1');
+  // 同じ形で送り直せば、作り直さない
+  expect(renderSheet(ss, 'T', next)).toBe(false);
+  // 形の印が無い（前の版で作った）タブも作り直す
+  fresh.meta.length = 0;
+  expect(renderSheet(ss, 'T', next)).toBe(true);
+  expect(fresh.name).toBe('T（旧2）');
+});

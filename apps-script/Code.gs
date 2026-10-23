@@ -137,12 +137,15 @@ function buildSheet(req) {
 // 初めて作るときは「（作成中）」の名前で全部作り、最後に名前を付ける（途中で止まっても、やり直せば作り直せる）
 // 形の違う（前の版の）タブがあれば、消さずに「（旧）」の名前にして残し、新しく作る
 function renderSheet(ss, tabName, layout) {
+  const sig = shapeSig(layout);
   let sh = ss.getSheetByName(tabName);
-  if (sh && !sameShape(sh, layout)) {
+  if (sh && !(sameShape(sh, layout) && readSig(sh) === sig)) {
     sh.setName(freeName(ss, tabName + '（旧'));
     sh = null;
   }
   if (sh) {
+    // 行の高さが手で変えられていても、元に戻す（図が重ならないように）
+    setRowHeights(sh, layout);
     sh.getRange(layout.toolRange).breakApart().clearContent();
     putTool(sh, layout);
     return false;
@@ -153,12 +156,32 @@ function renderSheet(ss, tabName, layout) {
   sh = ss.insertSheet(temp, ss.getSheets().length);
   sh.setHiddenGridlines(true);
   layout.colWidths.forEach(function (w, i) { sh.setColumnWidth(i + 1, w); });
-  layout.rowHeights.forEach(function (h, i) { sh.setRowHeightsForced(i + 1, 1, h); });
+  setRowHeights(sh, layout);
   layout.frame.forEach(function (c) { applyCell(sh, c); });
   layout.frameImages.forEach(function (im) { placeImage(sh, im); });
   putTool(sh, layout);
+  sh.addDeveloperMetadata(SIG_KEY, sig);
   sh.setName(tabName);
   return true;
+}
+
+function setRowHeights(sh, layout) {
+  layout.rowHeights.forEach(function (h, i) { sh.setRowHeightsForced(i + 1, 1, h); });
+}
+
+// タブの形（列幅・行の高さ・枠・枠の画像）の印。形を変えた版で送ると印が変わり、作り直しになる
+const SIG_KEY = 'shapeSig';
+function shapeSig(layout) {
+  const text = JSON.stringify([layout.colWidths, layout.rowHeights,
+    layout.frame.map(function (c) { return [c.range, c.value]; }),
+    layout.frameImages.map(function (im) { return [im.key, im.col, im.row]; })]);
+  let h = 5381;
+  for (let i = 0; i < text.length; i++) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
+  return String(h);
+}
+function readSig(sh) {
+  const m = sh.getDeveloperMetadata().filter(function (d) { return d.getKey() === SIG_KEY; })[0];
+  return m ? m.getValue() : '';
 }
 
 // 列幅がすべて同じなら、同じ形で作ったタブとみなす
