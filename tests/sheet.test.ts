@@ -121,7 +121,9 @@ test('green ground: grass trapezoid, white lines, white pass arrows', () => {
     { from: z(3, 2), to: z(3, 4), kind: 'pass', success: true },
     { from: z(2, 2), to: z(2, 4), kind: 'pass', success: false },
   ] }, 'green');
-  expect(svg).toContain('fill="#2f8f4e"');
+  expect(svg).toContain('fill="#2a6a2a"');
+  expect(svg.match(/fill="#235c23"/g)).toHaveLength(6);
+  expect(svg).not.toContain('>1st<');
   expect(svg).toMatch(/<line class="arrow" data-kind="pass" data-ok="1"[^>]*stroke="#ffffff"/);
   expect(svg).toMatch(/<line class="arrow" data-kind="pass" data-ok="0"[^>]*stroke="#ff2a2a"/);
   expect(svg).toMatch(/class="zone-line"[^>]*stroke="#ffffff"/);
@@ -135,12 +137,13 @@ test('white ground stays the same as before', () => {
   const o = { label: '2nd' as const, arrows: [], marks: [] };
   expect(sheetPitchSvg(o)).toBe(sheetPitchSvg(o, 'white'));
   expect(sheetPitchSvg(o)).not.toContain('#2f8f4e');
+  expect(sheetPitchSvg(o)).not.toContain('#2a6a2a');
 });
 
 test('green legend: grass background, white text, white pass glyph', () => {
   const svg = sheetLegendSvg('green');
-  expect(svg).toMatch(/<rect[^>]*fill="#2f8f4e"/);
+  expect(svg).toMatch(/<rect[^>]*fill="#2a6a2a"/);
   expect(svg).toMatch(/fill="#ffffff">パス</);
   expect(svg).not.toContain('#1fd655');
-  expect(sheetLegendSvg()).not.toContain('#2f8f4e');
+  expect(sheetLegendSvg()).not.toContain('#2a6a2a');
 });

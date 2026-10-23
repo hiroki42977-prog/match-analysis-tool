@@ -17,7 +17,8 @@ const INK = '#111111';
 const PASS_OK = '#1fd655';
 const FAIL = '#ff2a2a';
 const BLUE = '#1f3dff';
-const GRASS = '#2f8f4e';
+const GRASS = '#2a6a2a';
+const GRASS_STRIPE = '#235c23';
 const WHITE = '#ffffff';
 
 /** 図の地の色。white は PDF・結果画面、green はスプレッドシート用 */
@@ -169,12 +170,19 @@ function defs(ground: Ground): string {
 }
 
 export function sheetPitchSvg(o: SheetPitchOptions, ground: Ground = 'white'): string {
-  // 緑のときは白地の上に、ピッチの台形（project の四隅）だけを芝色で塗る
-  const grass = ground === 'green' ? `<path d="M10 71 L110 71 L87.5 6 L32.5 6 Z" fill="${GRASS}"/>` : '';
+  // 緑のときは全体を濃い芝色にし、台形に長さ方向12等分の帯を1本おきに重ねる
+  const green = ground === 'green';
+  const bg = green ? GRASS : '#ffffff';
+  const stripes = green ? Array.from({ length: 12 }, (_, i) => i).filter((i) => i % 2 === 0).map((i) => {
+    const a = (i * PITCH.w) / 12;
+    const b = ((i + 1) * PITCH.w) / 12;
+    return `<path d="${poly([[a, 0], [b, 0], [b, PITCH.h], [a, PITCH.h]], true)}" fill="${GRASS_STRIPE}"/>`;
+  }).join('') : '';
+  const grass = green ? `<path d="M10 71 L110 71 L87.5 6 L32.5 6 Z" fill="${GRASS}"/>${stripes}` : '';
+  const label = green ? '' : `<text x="2" y="8" font-size="5" font-weight="500" fill="${INK}">${o.label}</text>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SHEET.w} ${SHEET.h}" font-family="-apple-system, 'Hiragino Sans', sans-serif">`
-    + `${defs(ground)}<rect x="0" y="0" width="${SHEET.w}" height="${SHEET.h}" fill="#ffffff"/>${grass}`
-    + `<text x="2" y="8" font-size="5" font-weight="500" fill="${INK}">${o.label}</text>`
-    + `${markings(ground)}${zoneLines(ground)}${arrowLayer(o.arrows, ground)}${markLayer(o.marks)}</svg>`;
+    + `${defs(ground)}<rect x="0" y="0" width="${SHEET.w}" height="${SHEET.h}" fill="${bg}"/>${grass}`
+    + `${label}${markings(ground)}${zoneLines(ground)}${arrowLayer(o.arrows, ground)}${markLayer(o.marks)}</svg>`;
 }
 
 /** 凡例の1つ分。kind はピッチの印と同じ描き方を選ぶ */

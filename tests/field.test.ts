@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { mapPanelSvg, positionFieldSvg } from '../src/pitch/field';
+import { mapPageSvg, positionFieldSvg } from '../src/pitch/field';
 import { sheetPitchSvg } from '../src/pitch/sheet';
 
 test('position field: green horizontal pitch with white lines', () => {
@@ -10,12 +10,16 @@ test('position field: green horizontal pitch with white lines', () => {
   expect(svg.match(/<circle/g)!.length).toBeGreaterThanOrEqual(4); // センターサークル＋点3つ
 });
 
-test('map panel: band title, nested map, outer border', () => {
+test('map page: logo box on page 1, label, nested map on turf', () => {
   const map = sheetPitchSvg({ label: '1st', arrows: [], marks: [] }, 'green');
-  const svg = mapPanelSvg('プレーマップ 1st', map);
-  expect(svg).toContain('viewBox="0 0 720 350"');
-  expect(svg).toMatch(/<rect[^>]*height="20"[^>]*fill="#4a4a4a"/);
-  expect(svg).toContain('>プレーマップ 1st<');
-  expect(svg).toMatch(/<svg x="115" y="24" width="490" height="310"/);
-  expect(svg).toMatch(/<rect[^>]*fill="none"[^>]*stroke="#555555"/);
+  const a = mapPageSvg('1st', map, true);
+  expect(a).toContain('viewBox="0 0 720 380"');
+  expect(a).toContain('>チームロゴ<');
+  expect(a).toContain('>1st<');
+  expect(a).toContain('<svg x="153.5" y="50" width="521" height="330"');
+  const b = mapPageSvg('2nd', map, false);
+  expect(b).toContain('viewBox="0 0 720 330"');
+  expect(b).toContain('>2nd<');
+  expect(b).toContain('y="0" width="521"');
+  expect(b).not.toContain('チームロゴ');
 });

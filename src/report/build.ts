@@ -1,7 +1,7 @@
 import { computeStats, radarValues, type PlayerStats } from '../domain/stats';
 import type { Half, Match, PlayEvent, Player } from '../domain/types';
 import { LEGEND_SIZE, sheetLegendSvg, sheetPitchSvg, type SheetArrow, type SheetIcon, type SheetMark, type SheetPitchOptions } from '../pitch/sheet';
-import { positionFieldSvg, mapPanelSvg } from '../pitch/field';
+import { positionFieldSvg, mapPageSvg } from '../pitch/field';
 import { svgPngBase64 } from '../pitch/png';
 import { radarSvg } from './radar';
 import { buildSheetLayout, type SheetPngs } from './sheetLayout';
@@ -50,17 +50,17 @@ export function sheetFigures(events: PlayEvent[]): SheetFigure[] {
 export function sheetSvgs(events: PlayEvent[], stats: PlayerStats): Record<keyof SheetPngs, SheetSvg> {
   const [f1, f2] = sheetFigures(events);
   const radar = (k: '1H' | '2H' | 'all', title: '前半' | '後半' | '全体', color: string): SheetSvg =>
-    ({ svg: radarSvg(radarValues(stats[k]), title, color), w: 210, h: 168, scale: 2 });
+    ({ svg: radarSvg(radarValues(stats[k]), title, color), w: k === 'all' ? 210 : 220, h: k === 'all' ? 168 : 176, scale: 2 });
   const map = (f: SheetFigure): SheetSvg =>
-    ({ svg: mapPanelSvg(`プレーマップ ${f.label}`, sheetPitchSvg(f.svg, 'green')), w: 720, h: 350, scale: 1.5 });
+    ({ svg: mapPageSvg(f.label, sheetPitchSvg(f.svg, 'green'), f.label === '1st'), w: 720, h: f.label === '1st' ? 380 : 330, scale: 1.5 });
   return {
     radar1H: radar('1H', '前半', '#5bc0eb'),
     radar2H: radar('2H', '後半', '#2ecc71'),
     radarAll: radar('all', '全体', '#f39c12'),
     map1st: map(f1),
     map2nd: map(f2),
-    legend: { svg: sheetLegendSvg('green'), w: Math.round((19 * LEGEND_SIZE.w) / LEGEND_SIZE.h), h: 19, scale: 2 },
-    field: { svg: positionFieldSvg(), w: 286, h: 194, scale: 2 },
+    legend: { svg: sheetLegendSvg('green'), w: Math.round((18 * LEGEND_SIZE.w) / LEGEND_SIZE.h), h: 18, scale: 2 },
+    field: { svg: positionFieldSvg(), w: 396, h: 269, scale: 2 },
   };
 }
 

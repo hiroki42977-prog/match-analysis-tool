@@ -34,20 +34,22 @@ export function positionFieldSvg(): string {
     + `${side(left, 1)}${side(right, -1)}</svg>`;
 }
 
-const PANEL_W = 720;
-const PANEL_H = 350;
-const BAND_H = 20;
-const MAP_W = 490;
-const MAP_H = Math.round(MAP_W * 76 / 120);
+const PAGE_W = 720;
+const MAP_X = 108;
+const MAP_PAGE_H = 330;
+const MAP_PAGE_W = 521;
 
-/** 濃い灰色の見出し帯＋プレーマップ（入れ子の SVG）＋外枠 */
-export function mapPanelSvg(title: string, mapSvg: string): string {
-  const x = (PANEL_W - MAP_W) / 2;
-  const nested = mapSvg.replace('<svg ', `<svg x="${x}" y="${BAND_H + 4}" width="${MAP_W}" height="${MAP_H}" `);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${PANEL_W} ${PANEL_H}" font-family="-apple-system, 'Hiragino Sans', sans-serif">`
-    + `<rect x="0" y="0" width="${PANEL_W}" height="${PANEL_H}" fill="#ffffff"/>`
-    + `<rect x="0" y="0" width="${PANEL_W}" height="${BAND_H}" fill="#4a4a4a"/>`
-    + `<text x="${PANEL_W / 2}" y="14" font-size="11" fill="#6fe3cf" text-anchor="middle">${title}</text>`
-    + nested
-    + `<rect x=".5" y=".5" width="${PANEL_W - 1}" height="${PANEL_H - 1}" fill="none" stroke="#555555" stroke-width="1"/></svg>`;
+/** 2ページ目の図：左にラベル、右に濃い芝の地とプレーマップ（入れ子の SVG）。logoBox なら上にロゴ枠 */
+export function mapPageSvg(label: '1st' | '2nd', mapSvg: string, logoBox: boolean): string {
+  const top = logoBox ? 50 : 0;
+  const nested = mapSvg.replace('<svg ', `<svg x="153.5" y="${top}" width="${MAP_PAGE_W}" height="${MAP_PAGE_H}" `);
+  const logo = logoBox
+    ? `<rect x="252.5" y="5.5" width="215" height="39" fill="none" stroke="#555555" stroke-width="1"/>`
+      + `<text x="257" y="15" font-size="8" fill="#999999">チームロゴ</text>`
+    : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${PAGE_W} ${top + MAP_PAGE_H}" font-family="-apple-system, 'Hiragino Sans', sans-serif">`
+    + `<rect x="0" y="0" width="${PAGE_W}" height="${top + MAP_PAGE_H}" fill="#ffffff"/>${logo}`
+    + `<text x="54" y="${top + 24}" font-size="20" font-weight="700" fill="#111111" text-anchor="middle">${label}</text>`
+    + `<rect x="${MAP_X}" y="${top}" width="${PAGE_W - MAP_X}" height="${MAP_PAGE_H}" fill="#2a6a2a"/>`
+    + `${nested}</svg>`;
 }

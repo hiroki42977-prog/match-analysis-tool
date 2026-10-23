@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 import { computeStats } from '../src/domain/stats';
 import { buildSheetLayout, ROW_HEIGHTS } from '../src/report/sheetLayout';
+import { LEGEND_SIZE } from '../src/pitch/sheet';
 import { ev } from './helpers';
 
 const png = { radar1H: 'r1', radar2H: 'r2', radarAll: 'ra', map1st: 'm1', map2nd: 'm2', legend: 'lg', field: 'fd' };
@@ -10,54 +11,92 @@ const stats = computeStats([
 ]);
 const L = buildSheetLayout(stats, png);
 const at = <T extends { range: string }>(cells: T[], range: string) => cells.find((c) => c.range === range);
+// 範囲の始まりと終わりの行
+const rows = (range: string) => range.split(':').map((p) => Number(p.replace(/^[A-Z]+/, '')));
 
-test('page sizes: 10 columns of 72px, page1 1135px, page2 1134px', () => {
-  expect(L.colWidths).toEqual(Array(10).fill(72));
-  expect(ROW_HEIGHTS).toHaveLength(61);
+test('page sizes: 20 columns of 36px, page1 1132px, page2 1132px', () => {
+  expect(L.colWidths).toEqual(Array(20).fill(36));
+  expect(ROW_HEIGHTS).toHaveLength(59);
+  expect(L.rowHeights).toEqual([...ROW_HEIGHTS]);
   const sum = (a: number, b: number) => ROW_HEIGHTS.slice(a - 1, b).reduce((x, y) => x + y, 0);
-  expect(sum(1, 53)).toBe(1135);
-  expect(sum(54, 61)).toBe(1134);
+  expect(sum(1, 51)).toBe(1132);
+  expect(sum(52, 59)).toBe(1132);
+  expect(ROW_HEIGHTS[51]).toBe(380);
 });
 
-test('frame: band labels, blanks and logo box', () => {
-  expect(at(L.frame, 'A2:B2')).toMatchObject({ value: '写真', style: { bg: '#4a4a4a', color: '#6fe3cf' } });
-  expect(at(L.frame, 'D1:G1')?.value).toBe('チームロゴ');
-  expect(at(L.frame, 'C10:E10')).toMatchObject({ style: { wrap: true, valign: 'top' } });
-  expect(at(L.frame, 'F15:G15')?.value).toBe('ピッチコンディション');
-  expect(at(L.frame, 'B61:J61')).toBeDefined();
-  expect(L.frame.every((c) => !/^[A-J](2[2-9]|[34]\d|5[0-3])/.test(c.range))).toBe(true); // 表の範囲には書かない
+test('frame: labels, blanks, logo box and position field', () => {
+  const label = { bg: '#4a4a4a', color: '#6fe3cf', size: 6, wrap: true };
+  expect(at(L.frame, 'A7:B7')).toMatchObject({ value: '名前', style: label });
+  expect(at(L.frame, 'A8:B8')?.value).toBe('Pコンディション');
+  expect(at(L.frame, 'F10:G10')).toMatchObject({ value: '試合会場', style: label });
+  expect(at(L.frame, 'F16:G16')?.value).toBe('アシスト');
+  expect(at(L.frame, 'C7:E7')?.style).toEqual({ wrap: true, valign: 'top', align: 'left', size: 7 });
+  expect(at(L.frame, 'H16:I16')?.style).toEqual({ wrap: true, valign: 'top', align: 'left', size: 7 });
+  expect(at(L.frame, 'H1:M1')).toMatchObject({ value: 'チームロゴ', style: { color: '#999999', size: 8, align: 'left', valign: 'top' } });
+  expect(at(L.frame, 'A2:B6')).toMatchObject({ value: '写真', style: { wrap: true, valign: 'top', align: 'left', color: '#999999', size: 8 } });
+  expect(at(L.frame, 'E2:E6')).toMatchObject({ value: 'vs', style: { bold: true, size: 11 } });
+  expect(at(L.frame, 'H2:I2')).toMatchObject({ value: 'スコア', style: label });
+  expect(at(L.frame, 'H5')).toMatchObject({ value: 'Total', style: { size: 8 } });
+  expect(at(L.frame, 'J2:T16')?.style).toEqual({ bg: '#2f8f4e' });
+  expect(at(L.frame, 'D53:T53')?.style).toEqual({ bg: '#2a6a2a' });
+  expect(at(L.frame, 'D55:T55')).toMatchObject({ value: 'コメント', style: { bg: '#d9d9d9', bold: true, size: 9 } });
+  expect(at(L.frame, 'D57:T57')?.value).toBe('次節の課題');
+  expect(at(L.frame, 'D58:E58')).toMatchObject({ value: '攻撃', style: { bold: true, size: 9 } });
+  expect(at(L.frame, 'D59:E59')?.value).toBe('守備');
+  for (const r of ['D56:T56', 'F58:T58', 'F59:T59']) expect(at(L.frame, r)).toBeDefined();
+  // 52・54行目（2ページ目の大きな画像の行）と表の範囲（20〜51行）にはセルを置かない
+  for (const c of L.frame) {
+    for (const r of rows(c.range)) {
+      expect(r === 52 || r === 54).toBe(false);
+      expect(r >= 20 && r <= 51).toBe(false);
+    }
+  }
 });
 
-test('tool: pass table from statBlocks, rate merged', () => {
-  expect(L.toolRange).toBe('A22:J53');
-  expect(at(L.tool, 'A22:J22')?.value).toBe('パス成功率');
-  expect(at(L.tool, 'A25')?.value).toBe('前');
-  expect(at(L.tool, 'B25')?.value).toBe(1);
-  expect(at(L.tool, 'E25')?.value).toBe(1);
-  expect(at(L.tool, 'I25:I28')?.value).toBe('50%');
-  expect(at(L.tool, 'J25:J28')?.value).toBe('-');
-  expect(at(L.tool, 'A46:J46')?.value).toBe('シュート成功率');
-  expect(at(buildSheetLayout(computeStats([]), png).tool, 'J25:J28')?.value).toBe('-');
+test('tool: tables on the 20-column grid, rate merged', () => {
+  expect(L.toolRange).toBe('A20:T51');
+  expect(at(L.tool, 'A20:T20')).toMatchObject({ value: 'パス成功率', style: { bg: '#4a4a4a', color: '#6fe3cf', size: 10 } });
+  expect(at(L.tool, 'A21:F21')?.style).toMatchObject({ size: 9 });
+  expect(at(L.tool, 'Q21:T21')?.value).toBe('成功率');
+  expect(at(L.tool, 'C22:D22')).toMatchObject({ value: '前半', style: { size: 9 } });
+  expect(at(L.tool, 'A23:B23')?.value).toBe('前');
+  expect(at(L.tool, 'C23:D23')?.value).toBe(1);
+  expect(at(L.tool, 'I23:J23')?.value).toBe(1);
+  expect(at(L.tool, 'Q23:R26')).toMatchObject({ value: '50%', style: { bg: '#f4f4f4', size: 12 } });
+  expect(at(L.tool, 'S23:T26')?.value).toBe('-');
+  expect(at(L.tool, 'A28:T28')?.value).toBe('ドリブル成功率');
+  expect(at(L.tool, 'A44:T44')?.value).toBe('シュート成功率');
+  expect(at(L.tool, 'Q47:R51')).toBeDefined();
+  for (const c of L.tool) for (const r of rows(c.range)) expect(r >= 20 && r <= 51).toBe(true);
 });
 
-test('images: keys and places', () => {
-  expect(L.frameImages.map((i) => i.key)).toEqual(['frame:field']);
-  expect(L.toolImages.map((i) => [i.key, i.col, i.row])).toEqual([
-    ['tool:radar-1H', 1, 20], ['tool:radar-2H', 4, 20], ['tool:radar-all', 8, 20],
-    ['tool:map-1st', 1, 54], ['tool:legend', 2, 55], ['tool:map-2nd', 1, 56],
+test('images: keys, places and sizes', () => {
+  const lw = Math.round((18 * LEGEND_SIZE.w) / LEGEND_SIZE.h);
+  const pick = (i: { key: string; col: number; row: number; offsetX: number; offsetY: number; width: number; height: number }) =>
+    [i.key, i.col, i.row, i.offsetX, i.offsetY, i.width, i.height];
+  expect(L.frameImages.map(pick)).toEqual([['frame:field', 10, 3, 0, 27, 396, 269]]);
+  const lx = Math.floor((612 - lw) / 2);
+  expect(L.toolImages.map(pick)).toEqual([
+    ['tool:radar-1H', 1, 18, 16, 17, 220, 176],
+    ['tool:radar-2H', 8, 18, 16, 17, 220, 176],
+    ['tool:radar-all', 15, 18, 3, 21, 210, 168],
+    ['tool:map-1st', 1, 52, 0, 0, 720, 380],
+    ['tool:legend', 4 + Math.floor(lx / 36), 53, lx % 36, 2, lw, 18],
+    ['tool:map-2nd', 1, 54, 0, 0, 720, 330],
   ]);
-  expect(L.toolImages.find((i) => i.key === 'tool:map-1st')).toMatchObject({ width: 720, height: 350, pngBase64: 'm1' });
+  expect(L.toolImages.find((i) => i.key === 'tool:map-1st')?.pngBase64).toBe('m1');
 });
 
-test('images: offsetX stays inside the anchor column (under 72px)', () => {
+test('images: offsets stay inside the anchor cell', () => {
   for (const i of [...L.frameImages, ...L.toolImages]) {
     expect(i.offsetX).toBeGreaterThanOrEqual(0);
-    expect(i.offsetX).toBeLessThan(72);
+    expect(i.offsetX).toBeLessThan(36);
+    expect(i.offsetY).toBeGreaterThanOrEqual(0);
+    expect(i.offsetY).toBeLessThan(ROW_HEIGHTS[i.row - 1]);
   }
-  expect(L.toolImages.find((i) => i.key === 'tool:legend')?.col).toBe(2);
 });
 
 test('tool: table row labels are centered like the mockup', () => {
-  expect(at(L.tool, 'A25')?.style.align).toBeUndefined();
-  expect(at(L.tool, 'D25')?.style.align).toBeUndefined();
+  expect(at(L.tool, 'A23:B23')?.style.align).toBeUndefined();
+  expect(at(L.tool, 'G23:H23')?.style.align).toBeUndefined();
 });

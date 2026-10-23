@@ -12,7 +12,7 @@ export interface SheetLayout {
   rowHeights: number[];
   frame: SheetCell[];
   frameImages: SheetImage[];
-  toolRange: 'A22:J53';
+  toolRange: 'A20:T51';
   tool: SheetCell[];
   toolImages: SheetImage[];
 }
@@ -27,17 +27,20 @@ const tableHeights = (): number[] => {
   return out;
 };
 export const ROW_HEIGHTS: readonly number[] = [
-  40, 22, ...Array(7).fill(28), ...Array(9).fill(22), 3, 187, 3,
+  50, ...Array(5).fill(28), ...Array(10).fill(24), 3, 210, 3,
   ...tableHeights(),
-  350, 24, 350, 20, 170, 20, 100, 100,
+  380, 22, 330, 20, 160, 20, 100, 100,
 ];
+const COL_WIDTHS: readonly number[] = Array(20).fill(36);
 
 const BAND = '#4a4a4a';
 const MINT = '#6fe3cf';
 const GREEN = '#2f8f4e';
 const STRIPE = '#f4f4f4';
 const band: CellStyle = { bg: BAND, color: MINT };
+const label: CellStyle = { ...band, size: 6, wrap: true };
 const blank: CellStyle = { wrap: true, valign: 'top', align: 'left' };
+const itemBlank: CellStyle = { ...blank, size: 7 };
 
 const colName = (c: number) => String.fromCharCode(64 + c); // 1 -> A
 const a1 = (c1: number, r1: number, c2 = c1, r2 = r1) =>
@@ -47,99 +50,117 @@ function buildFrame(): SheetCell[] {
   const f: SheetCell[] = [];
   const add = (range: string, style: CellStyle = {}, value?: string | number) =>
     f.push(value === undefined ? { range, style } : { range, value, style });
-  add('D1:G1', { color: '#999999', size: 8, align: 'left', valign: 'top' }, 'チームロゴ');
-  add('A2:B2', band, '写真');
-  add('C2:E2', band, '対戦');
-  add('F2:J2', band, 'ポジション');
-  add('A3:B9', blank);
-  add('C3:C5', blank);
-  add('D3:D5', { bold: true, size: 12 }, 'vs');
-  add('E3:E5', blank);
-  add('C6:E6', band, 'スコア');
+  add('H1:M1', { color: '#999999', size: 8, align: 'left', valign: 'top' }, 'チームロゴ');
+  add('A2:B6', { ...blank, color: '#999999', size: 8 }, '写真');
+  add('C2:D6', blank);
+  add('E2:E6', { bold: true, size: 11 }, 'vs');
+  add('F2:G6', blank);
+  add('H2:I2', label, 'スコア');
   (['1st', '2nd', 'Total'] as const).forEach((t, i) => {
-    add(`C${7 + i}`, band, t);
-    add(`D${7 + i}:E${7 + i}`, blank);
+    add(`H${3 + i}`, { size: 8 }, t);
+    add(`I${3 + i}`, itemBlank);
   });
-  add('F3:J9', { bg: GREEN });
-  const left = ['名前', '映像LINK', '評価 1st', '評価 2nd', '出場ポジ', '個人テーマ（攻）', '個人テーマ（守）', '分析官', 'アシスト・ゴール'];
-  const right = ['試合条件', '試合時間', '出場時間', 'KO時間', '天候', 'ピッチコンディション', 'フィジカル', 'メンタル', 'システム'];
-  for (let i = 0; i < 9; i++) {
-    const r = 10 + i;
-    add(`A${r}:B${r}`, { ...band, align: 'left' }, left[i]);
-    add(`C${r}:E${r}`, blank);
-    add(`F${r}:G${r}`, { ...band, align: 'left' }, right[i]);
-    add(`H${r}:J${r}`, blank);
+  add('H6:I6', itemBlank);
+  add('J2:T16', { bg: GREEN });
+  const left = ['名前', 'Pコンディション', 'Mコンディション', '評価1st', '評価2nd', '出場ポジション', '個人テーマ（攻撃）', '個人テーマ（守備）', '分析官', 'アシスタント'];
+  const right = ['試合条件', '試合時間', '出場時間', '試合会場', 'キックオフ時間', '天候', 'ピッチコンディション', 'システム', '得点', 'アシスト'];
+  for (let i = 0; i < 10; i++) {
+    const r = 7 + i;
+    add(`A${r}:B${r}`, label, left[i]);
+    add(`C${r}:E${r}`, itemBlank);
+    add(`F${r}:G${r}`, label, right[i]);
+    add(`H${r}:I${r}`, itemBlank);
   }
-  add('A54:J54', {});
-  add('A55:J55', { bg: GREEN });
-  add('A56:J56', {});
-  add('A57:J57', band, 'コメント');
-  add('A58:J58', blank);
-  add('A59:J59', band, '次節の課題');
-  add('A60', band, '攻');
-  add('B60:J60', blank);
-  add('A61', band, '守');
-  add('B61:J61', blank);
+  // 52・54行目は2ページ目の大きな画像だけ。セルは置かない
+  add('D53:T53', { bg: '#2a6a2a' });
+  const head: CellStyle = { bg: '#d9d9d9', bold: true, size: 9 };
+  add('D55:T55', head, 'コメント');
+  add('D56:T56', blank);
+  add('D57:T57', head, '次節の課題');
+  add('D58:E58', { bold: true, size: 9 }, '攻撃');
+  add('F58:T58', blank);
+  add('D59:E59', { bold: true, size: 9 }, '守備');
+  add('F59:T59', blank);
   return f;
 }
 
 function buildTool(stats: PlayerStats): SheetCell[] {
   const t: SheetCell[] = [];
-  const add = (range: string, style: CellStyle = {}, value?: string | number) =>
+  // 表の k 列目（1〜10）はシートの 2k-1〜2k 列をつなげて使う
+  const add = (k1: number, r1: number, k2: number, r2: number, style: CellStyle = {}, value?: string | number) => {
+    const range = a1(2 * k1 - 1, r1, 2 * k2, r2);
     t.push(value === undefined ? { range, style } : { range, value, style });
-  let top = 22;
+  };
+  let top = 20;
   for (const b of statBlocks(stats)) {
-    add(a1(1, top, 10, top), { ...band, size: 11 }, b.title);
+    add(1, top, 10, top, { ...band, size: 10 }, b.title);
     const l = top + 1;
-    add(a1(1, l, 3, l), band, b.successLabel);
-    add(a1(4, l, 6, l), band, b.failLabel);
-    add(a1(7, l, 8, l), band, b.totalLabel);
-    add(a1(9, l, 10, l), band, '成功率');
+    const lab: CellStyle = { ...band, size: 9 };
+    add(1, l, 3, l, lab, b.successLabel);
+    add(4, l, 6, l, lab, b.failLabel);
+    add(7, l, 8, l, lab, b.totalLabel);
+    add(9, l, 10, l, lab, '成功率');
     const h = top + 2;
     ['', '前半', '後半', '', '前半', '後半', '前半', '後半', '前半', '後半'].forEach((v, i) =>
-      add(a1(i + 1, h), {}, v === '' ? undefined : v));
+      add(i + 1, h, i + 1, h, { size: 9 }, v === '' ? undefined : v));
     b.rows.forEach((row, k) => {
       const r = top + 3 + k;
       const st: CellStyle = k % 2 === 0 ? { bg: STRIPE } : {};
-      const lab: CellStyle = { ...st, ...(row.label.length >= 7 ? { size: 8 } : {}) };
-      add(a1(1, r), lab, row.label);
-      add(a1(2, r), st, row.success[0]);
-      add(a1(3, r), st, row.success[1]);
-      add(a1(4, r), lab, row.label);
-      add(a1(5, r), st, row.fail[0]);
-      add(a1(6, r), st, row.fail[1]);
-      add(a1(7, r), st, row.total[0]);
-      add(a1(8, r), st, row.total[1]);
+      const rl: CellStyle = { ...st, ...(row.label.length >= 7 ? { size: 8 } : {}) };
+      add(1, r, 1, r, rl, row.label);
+      add(2, r, 2, r, st, row.success[0]);
+      add(3, r, 3, r, st, row.success[1]);
+      add(4, r, 4, r, rl, row.label);
+      add(5, r, 5, r, st, row.fail[0]);
+      add(6, r, 6, r, st, row.fail[1]);
+      add(7, r, 7, r, st, row.total[0]);
+      add(8, r, 8, r, st, row.total[1]);
     });
     const first = top + 3;
     const last = top + 2 + b.rows.length;
-    add(a1(9, first, 9, last), { bg: STRIPE, size: 12 }, b.rate[0]);
-    add(a1(10, first, 10, last), { bg: STRIPE, size: 12 }, b.rate[1]);
+    add(9, first, 9, last, { bg: STRIPE, size: 12 }, b.rate[0]);
+    add(10, first, 10, last, { bg: STRIPE, size: 12 }, b.rate[1]);
     top = last + 2; // 次のブロックまで3pxのすき間行をはさむ
   }
   return t;
 }
 
+// 画像のずれが置くセルの幅・高さより大きいと、スプレッドシートで位置が崩れる。
+// はみ出す分だけセルを右・下にずらして、ずれをセルの中に収める
+function img(key: string, col: number, row: number, offsetX: number, offsetY: number, width: number, height: number, pngBase64: string): SheetImage {
+  while (offsetX >= COL_WIDTHS[col - 1]) { offsetX -= COL_WIDTHS[col - 1]; col++; }
+  while (offsetY >= ROW_HEIGHTS[row - 1]) { offsetY -= ROW_HEIGHTS[row - 1]; row++; }
+  return { key, col, row, offsetX, offsetY, width, height, pngBase64 };
+}
+
+// 範囲（列 c1〜c2・行 r1〜r2）の中央に置いたときのずれ（端数は切り捨て）
+const center = (c1: number, c2: number, r1: number, r2: number, w: number, h: number) => {
+  const sum = (a: readonly number[], i: number, j: number) => a.slice(i - 1, j).reduce((x, y) => x + y, 0);
+  return [Math.floor((sum(COL_WIDTHS, c1, c2) - w) / 2), Math.floor((sum(ROW_HEIGHTS, r1, r2) - h) / 2)] as const;
+};
+
 export function buildSheetLayout(stats: PlayerStats, png: SheetPngs): SheetLayout {
-  // 左のずれが列の幅（72px）を超えないよう、超えた分は右の列に置き直す
-  const img = (key: string, col: number, row: number, offsetX: number, offsetY: number, width: number, height: number, pngBase64: string): SheetImage =>
-    ({ key, col: col + Math.floor(offsetX / 72), row, offsetX: offsetX % 72, offsetY, width, height, pngBase64 });
-  const lw = Math.round((19 * LEGEND_SIZE.w) / LEGEND_SIZE.h);
+  const lw = Math.round((18 * LEGEND_SIZE.w) / LEGEND_SIZE.h);
+  const field = center(10, 20, 2, 16, 396, 269);
+  const r1 = center(1, 7, 18, 18, 220, 176);
+  const r2 = center(8, 14, 18, 18, 220, 176);
+  const ra = center(15, 20, 18, 18, 210, 168);
+  const lg = center(4, 20, 53, 53, lw, 18);
   return {
     version: 1,
-    colWidths: Array(10).fill(72),
+    colWidths: [...COL_WIDTHS],
     rowHeights: [...ROW_HEIGHTS],
     frame: buildFrame(),
-    frameImages: [img('frame:field', 6, 3, 37, 1, 286, 194, png.field)],
-    toolRange: 'A22:J53',
+    frameImages: [img('frame:field', 10, 2, field[0], field[1], 396, 269, png.field)],
+    toolRange: 'A20:T51',
     tool: buildTool(stats),
     toolImages: [
-      img('tool:radar-1H', 1, 20, 3, 10, 210, 168, png.radar1H),
-      img('tool:radar-2H', 4, 20, 39, 10, 210, 168, png.radar2H),
-      img('tool:radar-all', 8, 20, 3, 10, 210, 168, png.radarAll),
-      img('tool:map-1st', 1, 54, 0, 0, 720, 350, png.map1st),
-      img('tool:legend', 1, 55, Math.round((720 - lw) / 2), 2, lw, 19, png.legend),
-      img('tool:map-2nd', 1, 56, 0, 0, 720, 350, png.map2nd),
+      img('tool:radar-1H', 1, 18, r1[0], r1[1], 220, 176, png.radar1H),
+      img('tool:radar-2H', 8, 18, r2[0], r2[1], 220, 176, png.radar2H),
+      img('tool:radar-all', 15, 18, ra[0], ra[1], 210, 168, png.radarAll),
+      img('tool:map-1st', 1, 52, 0, 0, 720, 380, png.map1st),
+      img('tool:legend', 4, 53, lg[0], 2, lw, 18, png.legend),
+      img('tool:map-2nd', 1, 54, 0, 0, 720, 330, png.map2nd),
     ],
   };
 }

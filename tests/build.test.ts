@@ -2,6 +2,7 @@ import { expect, test } from 'vitest';
 import { sheetError, sheetFigures, sheetNames, sheetSvgs } from '../src/report/build';
 import { computeStats } from '../src/domain/stats';
 import type { Match, Player } from '../src/domain/types';
+import { LEGEND_SIZE } from '../src/pitch/sheet';
 import { ev } from './helpers';
 
 test('sheet figures: always 1st and 2nd', () => {
@@ -61,8 +62,22 @@ test('a non-JSON reply (Apps Script timed out) is explained', () => {
 test('sheet svgs: green maps, three radars, under 1M pixels', () => {
   const evs = [ev({ half: '1H', type: 'pass', success: true })];
   const s = sheetSvgs(evs, computeStats(evs));
-  expect(s.map1st.svg).toContain('>プレーマップ 1st<');
-  expect(s.map2nd.svg).toContain('#2f8f4e');      // 後半0件でも緑のピッチ
+  expect(s.map1st.svg).toContain('>1st<');
+  expect(s.map2nd.svg).toContain('#2a6a2a');      // 後半0件でも緑のピッチ
   expect(s.radarAll.svg).toContain('>全体<');
   for (const v of Object.values(s)) expect(v.w * v.scale * v.h * v.scale).toBeLessThan(1_000_000);
+});
+
+test('sheet svgs: sizes match the image slots of the sheet', () => {
+  const s = sheetSvgs([], computeStats([]));
+  const size = (k: keyof typeof s) => [s[k].w, s[k].h, s[k].scale];
+  expect(size('radar1H')).toEqual([220, 176, 2]);
+  expect(size('radar2H')).toEqual([220, 176, 2]);
+  expect(size('radarAll')).toEqual([210, 168, 2]);
+  expect(size('map1st')).toEqual([720, 380, 1.5]);
+  expect(size('map2nd')).toEqual([720, 330, 1.5]);
+  expect(size('legend')).toEqual([Math.round((18 * LEGEND_SIZE.w) / LEGEND_SIZE.h), 18, 2]);
+  expect(size('field')).toEqual([396, 269, 2]);
+  expect(s.map1st.svg).toContain('チームロゴ');
+  expect(s.map2nd.svg).not.toContain('チームロゴ');
 });
