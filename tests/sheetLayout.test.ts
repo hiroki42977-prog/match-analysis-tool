@@ -14,13 +14,13 @@ const at = <T extends { range: string }>(cells: T[], range: string) => cells.fin
 // 範囲の始まりと終わりの行
 const rows = (range: string) => range.split(':').map((p) => Number(p.replace(/^[A-Z]+/, '')));
 
-test('page sizes: 20 columns of 36px, page1 1132px, page2 1132px', () => {
+test('page sizes: 20 columns of 36px, page1 1055px, page2 1062px', () => {
   expect(L.colWidths).toEqual(Array(20).fill(36));
   expect(ROW_HEIGHTS).toHaveLength(59);
   expect(L.rowHeights).toEqual([...ROW_HEIGHTS]);
   const sum = (a: number, b: number) => ROW_HEIGHTS.slice(a - 1, b).reduce((x, y) => x + y, 0);
-  expect(sum(1, 51)).toBe(1132);
-  expect(sum(52, 59)).toBe(1132);
+  expect(sum(1, 51)).toBe(1055);
+  expect(sum(52, 59)).toBe(1062);
   expect(ROW_HEIGHTS[51]).toBe(380);
 });
 
@@ -74,12 +74,12 @@ test('images: keys, places and sizes', () => {
   const lw = Math.round((18 * LEGEND_SIZE.w) / LEGEND_SIZE.h);
   const pick = (i: { key: string; col: number; row: number; offsetX: number; offsetY: number; width: number; height: number }) =>
     [i.key, i.col, i.row, i.offsetX, i.offsetY, i.width, i.height];
-  expect(L.frameImages.map(pick)).toEqual([['frame:field', 10, 3, 0, 27, 396, 269]]);
+  expect(L.frameImages.map(pick)).toEqual([['frame:field', 10, 3, 0, 19, 396, 269]]);
   const lx = Math.floor((612 - lw) / 2);
   expect(L.toolImages.map(pick)).toEqual([
-    ['tool:radar-1H', 1, 18, 16, 17, 220, 176],
-    ['tool:radar-2H', 8, 18, 16, 17, 220, 176],
-    ['tool:radar-all', 15, 18, 3, 21, 210, 168],
+    ['tool:radar-1H', 1, 18, 16, 7, 220, 176],
+    ['tool:radar-2H', 8, 18, 16, 7, 220, 176],
+    ['tool:radar-all', 15, 18, 3, 11, 210, 168],
     ['tool:map-1st', 1, 52, 0, 0, 720, 380],
     ['tool:legend', 4 + Math.floor(lx / 36), 53, lx % 36, 2, lw, 18],
     ['tool:map-2nd', 1, 54, 0, 0, 720, 330],

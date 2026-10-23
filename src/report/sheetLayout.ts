@@ -21,15 +21,16 @@ export interface SheetLayout {
 const tableHeights = (): number[] => {
   const out: number[] = [];
   [4, 4, 4, 5].forEach((n, i) => {
-    out.push(17, 15, 15, ...Array(n).fill(17));
+    out.push(17, 15, 15, ...Array(n).fill(16));
     if (i < 3) out.push(3);
   });
   return out;
 };
+// 本物のスプレッドシート（A4・縦・幅に合わせる・余白 標準）で1ページに入るのは約1090px だったので、各ページ 1060px 前後にする
 export const ROW_HEIGHTS: readonly number[] = [
-  50, ...Array(5).fill(28), ...Array(10).fill(24), 3, 210, 3,
+  30, ...Array(5).fill(26), ...Array(10).fill(23), 3, 190, 3,
   ...tableHeights(),
-  380, 22, 330, 20, 160, 20, 100, 100,
+  380, 22, 330, 20, 110, 20, 90, 90,
 ];
 const COL_WIDTHS: readonly number[] = Array(20).fill(36);
 
