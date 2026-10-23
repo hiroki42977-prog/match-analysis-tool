@@ -39,17 +39,20 @@ const MAP_X = 108;
 const MAP_PAGE_H = 330;
 const MAP_PAGE_W = 521;
 
-/** 2ページ目の図：左にラベル、右に濃い芝の地とプレーマップ（入れ子の SVG）。logoBox なら上にロゴ枠 */
-export function mapPageSvg(label: '1st' | '2nd', mapSvg: string, logoBox: boolean): string {
-  const top = logoBox ? 50 : 0;
+/** 2ページ目の図：左にラベル、右に濃い芝の地とプレーマップ（入れ子の SVG）。logoSpace なら上にロゴを貼る余白（枠は描かない） */
+export function mapPageSvg(label: '1st' | '2nd', mapSvg: string, logoSpace: boolean): string {
+  const top = logoSpace ? 50 : 0;
   const nested = mapSvg.replace('<svg ', `<svg x="153.5" y="${top}" width="${MAP_PAGE_W}" height="${MAP_PAGE_H}" `);
-  const logo = logoBox
-    ? `<rect x="252.5" y="5.5" width="215" height="39" fill="none" stroke="#555555" stroke-width="1"/>`
-      + `<text x="257" y="15" font-size="8" fill="#999999">チームロゴ</text>`
-    : '';
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${PAGE_W} ${top + MAP_PAGE_H}" font-family="-apple-system, 'Hiragino Sans', sans-serif">`
-    + `<rect x="0" y="0" width="${PAGE_W}" height="${top + MAP_PAGE_H}" fill="#ffffff"/>${logo}`
+    + `<rect x="0" y="0" width="${PAGE_W}" height="${top + MAP_PAGE_H}" fill="#ffffff"/>`
     + `<text x="54" y="${top + 24}" font-size="20" font-weight="700" fill="#111111" text-anchor="middle">${label}</text>`
     + `<rect x="${MAP_X}" y="${top}" width="${PAGE_W - MAP_X}" height="${MAP_PAGE_H}" fill="#2a6a2a"/>`
     + `${nested}</svg>`;
+}
+
+/** ポジション図に置くマグネット（番号の丸）。背景は透明にして PNG にする */
+export function magnetSvg(n: number, fill: string): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" font-family="Arial, 'Hiragino Sans', sans-serif">`
+    + `<circle cx="10" cy="10" r="9" fill="${fill}" stroke="#111111" stroke-width="1"/>`
+    + `<text x="10" y="13.6" font-size="10" font-weight="700" fill="#ffffff" text-anchor="middle">${n}</text></svg>`;
 }

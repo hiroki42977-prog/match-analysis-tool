@@ -24,13 +24,15 @@ export async function svgToPngBase64(svg: string, widthPx = 1050): Promise<strin
 }
 
 /** SVG を白地の PNG にして base64 で返す。キャンバスは w*scale × h*scale。ブラウザ専用 */
-export async function svgPngBase64(svg: string, w: number, h: number, scale: number): Promise<string> {
+export async function svgPngBase64(svg: string, w: number, h: number, scale: number, transparent = false): Promise<string> {
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(w * scale);
   canvas.height = Math.round(h * scale);
   const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (!transparent) {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
   await drawSvg(ctx, svg, 0, 0, canvas.width, canvas.height);
   return canvas.toDataURL('image/png').split(',')[1];
 }

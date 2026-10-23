@@ -32,7 +32,8 @@ test('frame: labels, blanks, logo box and position field', () => {
   expect(at(L.frame, 'F16:G16')?.value).toBe('アシスト');
   expect(at(L.frame, 'C7:E7')?.style).toEqual({ wrap: true, valign: 'top', align: 'left', size: 7 });
   expect(at(L.frame, 'H16:I16')?.style).toEqual({ wrap: true, valign: 'top', align: 'left', size: 7 });
-  expect(at(L.frame, 'H1:M1')).toMatchObject({ value: 'チームロゴ', style: { color: '#999999', size: 8, align: 'left', valign: 'top' } });
+  // ロゴは担当者が貼る。枠は作らず、1行目は空けておく
+  expect(L.frame.filter((c) => rows(c.range)[0] === 1)).toEqual([]);
   expect(at(L.frame, 'A2:B6')).toMatchObject({ value: '写真', style: { wrap: true, valign: 'top', align: 'left', color: '#999999', size: 8 } });
   expect(at(L.frame, 'E2:E6')).toMatchObject({ value: 'vs', style: { bold: true, size: 11 } });
   expect(at(L.frame, 'H2:I2')).toMatchObject({ value: 'スコア', style: label });
@@ -99,4 +100,31 @@ test('images: offsets stay inside the anchor cell', () => {
 test('tool: table row labels are centered like the mockup', () => {
   expect(at(L.tool, 'A23:B23')?.style.align).toBeUndefined();
   expect(at(L.tool, 'G23:H23')?.style.align).toBeUndefined();
+});
+
+test('magnets: blue on the left and red on the right of the strip under the position field', () => {
+  const n = 11;
+  const M = buildSheetLayout(stats, png, { blue: Array.from({ length: n }, (_, i) => `b${i + 1}`), red: Array.from({ length: n }, (_, i) => `r${i + 1}`) });
+  const mags = M.frameImages.filter((i) => i.key.startsWith('frame:magnet-'));
+  expect(mags.map((i) => i.key)).toEqual([
+    ...Array.from({ length: n }, (_, i) => `frame:magnet-blue-${i + 1}`),
+    ...Array.from({ length: n }, (_, i) => `frame:magnet-red-${i + 1}`),
+  ]);
+  const top = (r: number) => ROW_HEIGHTS.slice(0, r - 1).reduce((a, b) => a + b, 0);
+  const left = (c: number) => (c - 1) * 36;
+  const fieldTop = top(2), fieldBottom = top(17), fieldLeft = left(10);
+  mags.forEach((m, i) => {
+    expect(m.width).toBe(16);
+    expect(m.height).toBe(16);
+    expect(m.offsetX).toBeLessThan(36);
+    expect(m.offsetY).toBeLessThan(ROW_HEIGHTS[m.row - 1]);
+    const x = left(m.col) + m.offsetX, y = top(m.row) + m.offsetY;
+    expect(y).toBe(fieldBottom - 21);
+    expect(y).toBeGreaterThan(fieldTop);
+    expect(x).toBe(fieldLeft + (i < n ? 1 + i * 18 : 199 + (i - n) * 18));
+  });
+  expect(mags.find((m) => m.key === 'frame:magnet-red-3')?.pngBase64).toBe('r3');
+  // 8人制なら 1〜8
+  const E = buildSheetLayout(stats, png, { blue: ['1', '2', '3', '4', '5', '6', '7', '8'], red: ['1', '2', '3', '4', '5', '6', '7', '8'] });
+  expect(E.frameImages.filter((i) => i.key.startsWith('frame:magnet-'))).toHaveLength(16);
 });

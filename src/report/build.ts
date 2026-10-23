@@ -1,7 +1,7 @@
 import { computeStats, radarValues, type PlayerStats } from '../domain/stats';
 import type { Half, Match, PlayEvent, Player } from '../domain/types';
 import { LEGEND_SIZE, sheetLegendSvg, sheetPitchSvg, type SheetArrow, type SheetIcon, type SheetMark, type SheetPitchOptions } from '../pitch/sheet';
-import { positionFieldSvg, mapPageSvg } from '../pitch/field';
+import { magnetSvg, mapPageSvg, positionFieldSvg } from '../pitch/field';
 import { svgPngBase64 } from '../pitch/png';
 import { radarSvg } from './radar';
 import { buildSheetLayout, type SheetPngs } from './sheetLayout';
@@ -24,7 +24,7 @@ export function sheetError(error: string): string {
   return error;
 }
 
-export interface SheetSvg { svg: string; w: number; h: number; scale: number }
+export interface SheetSvg { svg: string; w: number; h: number; scale: number; transparent?: boolean }
 
 const ICON: Record<string, SheetIcon> = {
   regate: 'L', proteccion: 'P', ball_recovery: 'ball', one_vs_one: '1', aerial: '空', on_target: 'shot-on', off_target: 'shot-off',
@@ -64,6 +64,13 @@ export function sheetSvgs(events: PlayEvent[], stats: PlayerStats): Record<keyof
   };
 }
 
+/** ポジション図のマグネット。青＝自チーム、赤＝相手。何人制かに合わせて 1〜11 か 1〜8 */
+export function magnetSvgs(format: Match['format']): { blue: SheetSvg[]; red: SheetSvg[] } {
+  const n = Number(format);
+  const make = (fill: string) => Array.from({ length: n }, (_, i) => ({ svg: magnetSvg(i + 1, fill), w: 16, h: 16, scale: 3, transparent: true }));
+  return { blue: make('#3a9be0'), red: make('#e53228') };
+}
+
 /** その試合で記録がある選手全員分のレポートを、1人ずつ Apps Script に送る */
 export async function buildReports(
   matchId: string,
@@ -89,7 +96,10 @@ export async function buildReports(
       const v = svgs[key];
       png[key] = await svgPngBase64(v.svg, v.w, v.h, v.scale);
     }
-    const payload = { action: 'buildSheet', ...sheetNames(m, p, team?.name ?? ''), layout: buildSheetLayout(computeStats(mine), png) };
+    const toPng = (v: SheetSvg) => svgPngBase64(v.svg, v.w, v.h, v.scale, v.transparent);
+    const mg = magnetSvgs(m.format);
+    const magnets = { blue: await Promise.all(mg.blue.map(toPng)), red: await Promise.all(mg.red.map(toPng)) };
+    const payload = { action: 'buildSheet', ...sheetNames(m, p, team?.name ?? ''), layout: buildSheetLayout(computeStats(mine), png, magnets) };
     const r = await postToScript(settings, payload);
     if (r.ok) ok++;
     else failed.push({ name, error: sheetError(r.error) });

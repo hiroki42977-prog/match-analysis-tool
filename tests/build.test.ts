@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { sheetError, sheetFigures, sheetNames, sheetSvgs } from '../src/report/build';
+import { magnetSvgs, sheetError, sheetFigures, sheetNames, sheetSvgs } from '../src/report/build';
 import { computeStats } from '../src/domain/stats';
 import type { Match, Player } from '../src/domain/types';
 import { LEGEND_SIZE } from '../src/pitch/sheet';
@@ -78,6 +78,22 @@ test('sheet svgs: sizes match the image slots of the sheet', () => {
   expect(size('map2nd')).toEqual([720, 330, 1.5]);
   expect(size('legend')).toEqual([Math.round((18 * LEGEND_SIZE.w) / LEGEND_SIZE.h), 18, 2]);
   expect(size('field')).toEqual([396, 269, 2]);
-  expect(s.map1st.svg).toContain('チームロゴ');
+  // 1st の上はロゴを貼る余白（枠や文字は描かない）
+  expect(s.map1st.svg).toContain('viewBox="0 0 720 380"');
+  expect(s.map1st.svg).not.toContain('チームロゴ');
   expect(s.map2nd.svg).not.toContain('チームロゴ');
+});
+
+test('magnet svgs: one per player for the match format, transparent 16px', () => {
+  const m11 = magnetSvgs('11');
+  expect(m11.blue).toHaveLength(11);
+  expect(m11.red).toHaveLength(11);
+  expect(m11.blue[0].svg).toContain('>1<');
+  expect(m11.red[10].svg).toContain('>11<');
+  expect(m11.blue[0]).toMatchObject({ w: 16, h: 16, transparent: true });
+  expect(m11.blue[0].svg).toContain('#3a9be0');
+  expect(m11.red[0].svg).toContain('#e53228');
+  const m8 = magnetSvgs('8');
+  expect(m8.blue).toHaveLength(8);
+  expect(m8.red).toHaveLength(8);
 });

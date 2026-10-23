@@ -51,7 +51,7 @@ function buildFrame(): SheetCell[] {
   const f: SheetCell[] = [];
   const add = (range: string, style: CellStyle = {}, value?: string | number) =>
     f.push(value === undefined ? { range, style } : { range, value, style });
-  add('H1:M1', { color: '#999999', size: 8, align: 'left', valign: 'top' }, 'チームロゴ');
+  // 1行目はチームロゴを貼る場所。枠は作らず空けておく
   add('A2:B6', { ...blank, color: '#999999', size: 8 }, '写真');
   add('C2:D6', blank);
   add('E2:E6', { bold: true, size: 11 }, 'vs');
@@ -140,7 +140,16 @@ const center = (c1: number, c2: number, r1: number, r2: number, w: number, h: nu
   return [Math.floor((sum(COL_WIDTHS, c1, c2) - w) / 2), Math.floor((sum(ROW_HEIGHTS, r1, r2) - h) / 2)] as const;
 };
 
-export function buildSheetLayout(stats: PlayerStats, png: SheetPngs): SheetLayout {
+export interface SheetMagnets { blue: string[]; red: string[] }
+
+// マグネット（16px）を、ポジション図（J2:T16）の下の緑の帯に、青は左から・赤は真ん中から並べる
+function magnetImages(m: SheetMagnets): SheetImage[] {
+  const y = ROW_HEIGHTS.slice(1, 16).reduce((a, b) => a + b, 0) - 21;
+  const put = (team: 'blue' | 'red', x0: number) => (p: string, i: number) => img(`frame:magnet-${team}-${i + 1}`, 10, 2, x0 + i * 18, y, 16, 16, p);
+  return [...m.blue.map(put('blue', 1)), ...m.red.map(put('red', 199))];
+}
+
+export function buildSheetLayout(stats: PlayerStats, png: SheetPngs, magnets: SheetMagnets = { blue: [], red: [] }): SheetLayout {
   const lw = Math.round((18 * LEGEND_SIZE.w) / LEGEND_SIZE.h);
   const field = center(10, 20, 2, 16, 396, 269);
   const r1 = center(1, 7, 18, 18, 220, 176);
@@ -152,7 +161,7 @@ export function buildSheetLayout(stats: PlayerStats, png: SheetPngs): SheetLayou
     colWidths: [...COL_WIDTHS],
     rowHeights: [...ROW_HEIGHTS],
     frame: buildFrame(),
-    frameImages: [img('frame:field', 10, 2, field[0], field[1], 396, 269, png.field)],
+    frameImages: [img('frame:field', 10, 2, field[0], field[1], 396, 269, png.field), ...magnetImages(magnets)],
     toolRange: 'A20:T51',
     tool: buildTool(stats),
     toolImages: [
